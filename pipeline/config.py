@@ -22,14 +22,24 @@ Date    : Avril 2026
 Version : 1.1
 """
 
-# ─────────────────────────────────────────────────────────────────
-# ⚠️  SEULE VALEUR À MODIFIER SELON VOTRE PROJET GOOGLE CLOUD
-# ─────────────────────────────────────────────────────────────────
-# Votre Project ID est visible sur console.cloud.google.com
-# en haut à gauche dans la barre de navigation.
-# Format habituel : "nom-projet-123456"
+from dotenv import load_dotenv
+import os
+from pathlib import Path
 
-GCP_PROJECT_ID = "pipelin-event"   # ← REMPLACEZ PAR VOTRE PROJECT ID
+load_dotenv()
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Your Project ID is visible on console.cloud.google.com
+# in the top left navigation bar.
+# Format usual : "nom-projet-123456"
+
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
+if not GCP_PROJECT_ID:
+    raise ValueError(
+        "GCP_PROJECT_ID is not set. Create a .env file in the project root "
+        "with GCP_PROJECT_ID=your-google-cloud-project-id"
+    )
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -48,7 +58,7 @@ BQ_TABLE_FULL = f"{BQ_PROJECT}.{BQ_DATASET}.{BQ_TABLE}"
 # ─────────────────────────────────────────────────────────────────
 # FILTRE GÉOGRAPHIQUE — BÉNIN
 # ─────────────────────────────────────────────────────────────────
-# ⚠️  ATTENTION : le code GDELT du Bénin est 'BN'
+# WARNING: GDELT uses 'BN' for Benin (different from ISO code 'BJ')
 # Ce code est DIFFÉRENT du code ISO standard qui est 'BJ'.
 # Utiliser 'BJ' retournerait zéro résultat dans GDELT.
 
@@ -152,17 +162,17 @@ SAMPLE_LIMIT = 5_000   # Échantillon de test (économie de quota)
 # CHEMINS DE FICHIERS DE SORTIE
 # ─────────────────────────────────────────────────────────────────
 
-DATA_DIR      = "data"
-RAW_DIR       = f"{DATA_DIR}/raw"
-PROCESSED_DIR = f"{DATA_DIR}/clean"
-SAMPLES_DIR   = f"{DATA_DIR}/sample"
+DATA_DIR      = BASE_DIR / "data"
+RAW_DIR       = DATA_DIR / "raw"
+PROCESSED_DIR = DATA_DIR / "processed"
+SAMPLES_DIR   = DATA_DIR / "sample"
 
-RAW_FILE       = f"{RAW_DIR}/benin_gdelt_raw.csv"
-PROCESSED_FILE = f"{PROCESSED_DIR}/benin_gdelt_clean.csv"
-PARQUET_FILE   = f"{PROCESSED_DIR}/benin_gdelt_clean.parquet"
-JSON_FILE      = f"{PROCESSED_DIR}/benin_gdelt_clean.json"
-QUALITY_REPORT = f"{PROCESSED_DIR}/quality_report.json"
-SAMPLE_FILE    = f"{SAMPLES_DIR}/benin_gdelt_sample.csv"
+RAW_FILE       = RAW_DIR / "benin_gdelt_raw.csv"
+PROCESSED_FILE = PROCESSED_DIR / "benin_gdelt_clean.csv"
+PARQUET_FILE   = PROCESSED_DIR / "benin_gdelt_clean.parquet"
+JSON_FILE      = PROCESSED_DIR / "benin_gdelt_clean.json"
+QUALITY_REPORT = PROCESSED_DIR / "quality_report.json"
+SAMPLE_FILE    = SAMPLES_DIR / "benin_gdelt_sample.csv"
 
 
 # ─────────────────────────────────────────────────────────────────

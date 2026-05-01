@@ -46,15 +46,15 @@ Version : 1.2
 import re
 import pandas as pd
 import numpy as np
-from utils import logger, timer, validate_dataframe
-from config import COUNTRY_CODE, COUNTRY_ACTOR_CODE
+from .utils import logger, timer, validate_dataframe
+from .config import COUNTRY_CODE, COUNTRY_ACTOR_CODE
 
 
 # ─────────────────────────────────────────────────────────────────
 # DICTIONNAIRES DE TRADUCTION GDELT
 # ─────────────────────────────────────────────────────────────────
 
-# Traduction QuadClass → libellé français
+# Translation QuadClass -> French label
 # QuadClass classe chaque événement en 4 grandes familles
 QUAD_CLASS_LABELS = {
     1: "Coopération verbale",
@@ -63,7 +63,7 @@ QUAD_CLASS_LABELS = {
     4: "Conflit matériel",
 }
 
-# Traduction EventRootCode → libellé français
+# Translation EventRootCode -> French label
 # GDELT classe tous les événements en 20 catégories racines.
 # Les clés sont des strings zero-padded sur 2 caractères ("01"..."20")
 # car c'est le format produit après conversion dans enrich_data().
@@ -90,7 +90,7 @@ EVENT_ROOT_LABELS = {
     "20": "Force militaire",
 }
 
-# Traduction Actor Type → libellé français
+# Translation Actor Type -> French label
 # Utilisé pour Q5 — identifier qui parle du Bénin
 ACTOR_TYPE_LABELS = {
     "GOV": "Gouvernement",
@@ -120,7 +120,7 @@ ACTOR_TYPE_LABELS = {
 
 
 # ─────────────────────────────────────────────────────────────────
-# ÉTAPE 1 — NETTOYAGE DE BASE
+# STEP 1 — BASIC CLEANING
 # ─────────────────────────────────────────────────────────────────
 
 @timer
@@ -140,19 +140,19 @@ def clean_basic(df: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: DataFrame nettoyé
     """
     n = len(df)
-    logger.info(f"Nettoyage de base — {n:,} lignes en entrée")
+    logger.info(f"Basic cleaning: {n:,} rows in input")
 
     df = df.drop_duplicates()
     df = df.dropna(subset=["SQLDATE"])
     df = df.dropna(subset=["SOURCEURL"])
     df = df.reset_index(drop=True)
 
-    logger.info(f"✅ Nettoyage terminé — {n - len(df):,} lignes supprimées, {len(df):,} conservées")
+    logger.info(f"[OK] Basic cleaning complete: {n - len(df):,} rows removed, {len(df):,} kept")
     return df
 
 
 # ─────────────────────────────────────────────────────────────────
-# ÉTAPE 2 — CONVERSION DES TYPES
+# STEP 2 — TYPE CONVERSION
 # ─────────────────────────────────────────────────────────────────
 
 @timer
@@ -179,7 +179,7 @@ def convert_types(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: DataFrame avec les bons types
     """
-    logger.info("Conversion des types...")
+    logger.info("Conversion des types:")
 
     # ── Dates ─────────────────────────────────────────────────────
     # SQLDATE format GDELT : YYYYMMDD (ex: 20250415 → 2025-04-15)
@@ -208,12 +208,12 @@ def convert_types(df: pd.DataFrame) -> pd.DataFrame:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
 
-    logger.info("✅ Types convertis")
+    logger.info("[OK] Types converted")
     return df
 
 
 # ─────────────────────────────────────────────────────────────────
-# ÉTAPE 3 — ENRICHISSEMENT (Q1 → Q5)
+# STEP 3 — ENRICHMENT (Q1 → Q5)
 # ─────────────────────────────────────────────────────────────────
 
 @timer
@@ -240,28 +240,16 @@ def enrich_data(df: pd.DataFrame) -> pd.DataFrame:
     df["event_quarter"] = df["SQLDATE"].dt.to_period("Q").astype(str)
 
     # CORRECTION v1.2 — event_root_label
-    # Problème : EventRootCode arrive de BigQuery en int64 (ex: 4, 19).
-    # Un simple astype(str) donne "4" et non "04".
-    # str.zfill(2) dans convert_types() ne résout pas le problème
-    # car pandas sur int64 donne "4".zfill(2) = "4" et non "04".
-    # Solution : convertir en int puis en str formaté sur 2 chiffres
-    # avec str(int(x)).zfill(2) pour garantir "04", "19", etc.
-    df["event_root_label"] = (
-        pd.to_numeric(df["EventRootCode"], errors="coerce")  # s'assure d'avoir un numérique
-        .dropna()                                             # ignore les NaN temporairement
-        .astype(int)                                          # int64 → int natif Python
-        .astype(str)                                          # int → "4", "19"
-        .str.zfill(2)                                         # "4" → "04", "19" → "19"
-        .map(EVENT_ROOT_LABELS)                               # "04" → "Consultation"
-    )
-    # Réapplication sur le DataFrame complet avec fillna pour les NaN
+    # Problem: EventRootCode comes from BigQuery as int64 (e.g., 4, 19).
+    # Simple astype(str) gives "4" not "04".
+    # Solution: convert to int then to formatted string with zfill(2)
     df["event_root_label"] = (
         df["EventRootCode"]
         .apply(lambda x: str(int(float(x))).zfill(2) if pd.notna(x) else None)
         .map(EVENT_ROOT_LABELS)
         .fillna("Autre")
     )
-    logger.info("   Q1 ✅")
+    logger.info("   Q1 done")
 
     # ── Q2 — Catégorie de ton et de stabilité ─────────────────────
     # AvgTone : [-100, +100] — seuils calibrés sur GDELT Afrique
@@ -278,7 +266,7 @@ def enrich_data(df: pd.DataFrame) -> pd.DataFrame:
 
     df["tone_category"]      = df["AvgTone"].apply(tone_cat)
     df["stability_category"] = df["GoldsteinScale"].apply(stability_cat)
-    logger.info("   Q2 ✅")
+    logger.info("   Q2 done")
 
     # ── Q3 — Délai de propagation médiatique ─────────────────────
     # Mesure le nombre de jours entre :
@@ -295,7 +283,7 @@ def enrich_data(df: pd.DataFrame) -> pd.DataFrame:
     else:
         df["propagation_delay_days"] = np.nan
         logger.warning("   Q3 — DATEADDED absent, propagation_delay_days = NaN")
-    logger.info("   Q3 ✅")
+    logger.info("   Q3 done")
 
     # ── Q4 — Domaine source et détection de période de crise ──────
     def extract_domain(url: str) -> str:
@@ -319,7 +307,7 @@ def enrich_data(df: pd.DataFrame) -> pd.DataFrame:
     df["is_crisis_period"] = (
         (df["AvgTone"] < -5.0) | (df["GoldsteinScale"] < -5.0)
     )
-    logger.info("   Q4 ✅")
+    logger.info("   Q4 done")
 
     # ── Q5 — Rôle du Bénin : Acteur, Spectateur, Mixte ou Contexte ─
     def benin_role(row) -> str:
@@ -357,7 +345,17 @@ def enrich_data(df: pd.DataFrame) -> pd.DataFrame:
 
     df["benin_role"] = df.apply(benin_role, axis=1)
 
-    # Traduction des types d'acteurs en libellés français
+    # Vectorized benin_role for better performance
+    a1 = df["Actor1CountryCode"].fillna("").str.strip().str.upper()
+    a2 = df["Actor2CountryCode"].fillna("").str.strip().str.upper()
+    bn = COUNTRY_ACTOR_CODE.strip().upper()
+
+    df["benin_role"] = "Context"
+    df.loc[a1 == bn, "benin_role"] = "Actor"
+    df.loc[a2 == bn, "benin_role"] = "Spectator"
+    df.loc[(a1 == bn) & (a2 == bn), "benin_role"] = "Mixed"
+
+    # Traduction des types d'acteurs
     df["actor1_type_label"] = (
         df["Actor1Type1Code"]
         .map(ACTOR_TYPE_LABELS)
@@ -369,15 +367,15 @@ def enrich_data(df: pd.DataFrame) -> pd.DataFrame:
         .fillna("Non identifié")
     )
 
-    # Traduction QuadClass en libellé français
+    # Translation QuadClass to French label
     df["quad_class_label"] = (
         df["QuadClass"]
         .map(QUAD_CLASS_LABELS)
         .fillna("Inconnu")
     )
-    logger.info("   Q5 ✅")
+    logger.info("   Q5 done")
 
-    logger.info("✅ Enrichissement terminé")
+    logger.info("[OK] Enrichment complete")
     return df
 
 
@@ -420,7 +418,7 @@ def filter_data(df: pd.DataFrame) -> pd.DataFrame:
         ]
     logger.info(f"   Après filtre coordonnées GPS   : {len(df):,} lignes")
 
-    logger.info(f"✅ Filtrage terminé — {n - len(df):,} lignes supprimées")
+    logger.info(f"[OK] Filtering complete: {n - len(df):,} rows removed")
     return df
 
 

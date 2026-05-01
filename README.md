@@ -83,9 +83,23 @@ Insights et recommandations
 
 ## Questions analytiques envisagées
 
-Les premières questions qui guideront le projet sont :
+Les questions qui guident le projet :
 
-1.
+**Question 1** — Quand le monde parle-t-il du Benin, et quels evenements provoquent les pics de couverture sur 12 mois ?
+Cette question vise a identifier les periodes de forte attention mediatique internationale ainsi que les evenements declencheurs (crises politiques, attaques terroristes, elections, visites diplomatiques, performances economiques, etc.).
+
+**Question 2** — Le ton mediatique mondial sur le Benin est-il positif, neutre ou negatif, et comment evolue-t-il dans le temps ?
+L'objectif ici est d'analyser la perception internationale du pays a travers le sentiment mediatique dominant et son evolution selon les contextes.
+
+**Question 3** — Lorsqu'un evenement majeur se produit au Benin, combien de jours faut-il pour que la couverture mediatique mondiale atteigne son pic, puis retombe ?
+Cette question cherche a mesurer la vitesse de propagation et la duree de vie mediatique des evenements lies au Benin.
+
+**Question 4** — Les sources mediatiques qui couvrent le Benin lors des crises sont-elles differentes de celles qui le couvrent en periode normale ?
+Il s'agit ici d'identifier les medias dominants selon les contextes : presse internationale generaliste, medias africains, agences de presse, medias specialises, etc.
+
+**Question 5** — Le Benin est-il acteur ou spectateur de sa propre histoire internationale ?
+Cette question constitue la synthese strategique du projet : elle vise a determiner si le pays influence activement son image internationale ou si celle-ci est principalement faconnagee par des acteurs exterieurs.
+
 ## Installation du projet
 
 Créer un environnement virtuel :

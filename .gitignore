@@ -35,3 +35,7 @@ models/*
 credentials/
 *.json
 credentials.json
+
+# IDE
+.idea/questions.txt
+code_review_de_pipeline_gdelt.md

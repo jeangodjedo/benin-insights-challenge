@@ -32,11 +32,14 @@ Version : 1.1 — Correction du bruit Benin City (Nigeria)
 import os
 import pandas as pd
 from google.cloud import bigquery
+# Retry for transient errors (quota, timeout, network issues)
+from google.api_core.retry import Retry
 
-from config import (
+from .config import (
     GCP_PROJECT_ID,
     BQ_TABLE_FULL,
     COUNTRY_CODE,
+    COUNTRY_ACTOR_CODE,
     START_YEAR,
     START_MONTHYEAR,
     END_MONTHYEAR,
@@ -47,7 +50,7 @@ from config import (
     RAW_DIR,
     SAMPLES_DIR,
 )
-from utils import logger, timer, create_directories, validate_dataframe
+from .utils import logger, timer, create_directories, validate_dataframe
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -128,7 +131,8 @@ def build_query(limit: int = None) -> str:
     -- ================================================================
     -- Pipeline GDELT — Bénin Insights Challenge 2026
     -- Période    : Janvier 2025 → Décembre 2025 (année complète)
-    -- Pays       : {COUNTRY_CODE} (Bénin — code GDELT, différent du code ISO BJ)
+    -- Pays       : {COUNTRY_CODE} (Benin — GDELT code, different from ISO code BJ)
+    -- Actor Code : {COUNTRY_ACTOR_CODE} (CAMEO code for Actor1CountryCode/Actor2CountryCode)
     -- Projet     : {GCP_PROJECT_ID}
     -- Extraction : {limit_info}
     -- Anti-bruit : Exclusion de Benin City (Nigeria)
@@ -141,27 +145,26 @@ def build_query(limit: int = None) -> str:
 
     WHERE
         -- FILTRE 1 (prioritaire) : année
-        -- BigQuery supprime toutes les partitions hors 2025 avant de scanner.
-        -- Ce filtre DOIT toujours être en premier pour économiser le quota.
-        YEAR = {START_YEAR}
+        -- Multi-year support: YEAR BETWEEN {START_YEAR} AND {END_YEAR}
+        YEAR BETWEEN {START_YEAR} AND {END_YEAR}
 
         -- FILTRE 2 : mois précis — janvier (202501) à décembre (202512)
         AND MonthYear BETWEEN {START_MONTHYEAR} AND {END_MONTHYEAR}
 
-        -- FILTRE 3 : Bénin — multi-critères avec anti-bruit Benin City
+        -- FILTRE 3 : Benin — multi-criteres with anti-bruit Benin City
         AND (
-            -- Cas A : Le Bénin est l'acteur principal (initiateur)
-            -- On vérifie le code pays pour éviter les homonymes
-            (Actor1CountryCode = '{COUNTRY_CODE}')
+            -- Case A : Benin is the primary actor (initiator)
+            -- Uses CAMEO code (BEN) not geographic code (BN)
+            (Actor1CountryCode = '{COUNTRY_ACTOR_CODE}')
 
-            -- Cas B : Le Bénin est l'acteur secondaire (destinataire)
-            OR (Actor2CountryCode = '{COUNTRY_CODE}')
+            -- Case B : Benin is the secondary actor (recipient)
+            OR (Actor2CountryCode = '{COUNTRY_ACTOR_CODE}')
 
-            -- Cas C : L'événement se déroule AU BÉNIN
-            -- ⚠️  Anti-bruit : on exclut les lieux qui contiennent
+            -- Case C : The event takes place IN BENIN
+            -- Anti-bruit : on exclut les lieux qui contiennent
             --     "nigeria", "edo" ou "benin city" dans leur nom complet.
-            --     Cela filtre les événements de Benin City (Nigeria)
-            --     qui sont parfois tagués 'BN' par erreur dans GDELT.
+            --     Cela filtre les evenements de Benin City (Nigeria)
+            --     qui sont parfois tagues 'BN' par erreur dans GDELT.
             OR (
                 ActionGeo_CountryCode = '{COUNTRY_CODE}'
                 AND LOWER(ActionGeo_FullName) NOT LIKE '%nigeria%'
@@ -214,7 +217,7 @@ def extract_data(client: bigquery.Client, limit: int = None) -> pd.DataFrame:
 
     try:
         logger.info("Soumission de la requête à BigQuery...")
-        query_job = client.query(query)
+        query_job = client.query(query, retry=Retry(maximum_delay_seconds=60, deadline=300))
 
         logger.info("Exécution en cours — patience si mode full...")
         df = query_job.to_dataframe()
@@ -253,9 +256,9 @@ def save_raw_data(df: pd.DataFrame, filepath: str) -> None:
     try:
         df.to_csv(filepath, index=False, encoding="utf-8")
         size_kb = round(os.path.getsize(filepath) / 1024, 1)
-        logger.info(f"✅ Données brutes sauvegardées : {filepath} ({size_kb} KB)")
+        logger.info(f"[OK] Raw data saved: {filepath} ({size_kb} KB)")
     except IOError as e:
-        logger.error(f"❌ Erreur écriture fichier : {e}")
+        logger.error(f"[ERROR] File write error: {e}")
         raise
 
 
@@ -281,7 +284,7 @@ def run_sample_extraction() -> pd.DataFrame:
     logger.info("EXTRACTION ÉCHANTILLON (5 000 lignes) — DÉMARRAGE")
     logger.info("=" * 55)
 
-    create_directories(RAW_DIR, SAMPLES_DIR)
+    create_directories(RAW_DIR)
     client = get_bigquery_client()
 
     df = extract_data(client, limit=SAMPLE_LIMIT)
@@ -301,9 +304,9 @@ def run_full_extraction() -> pd.DataFrame:
     pour le Bénin entre janvier et décembre 2025, sans aucune
     clause LIMIT dans la requête SQL.
 
-    ⚠️  À utiliser uniquement après validation en mode sample.
-    ⚠️  L'exécution peut prendre plusieurs minutes sur BigQuery.
-    ⚠️  Consomme plus de quota que le mode sample.
+    # WARNING: Use only after validation in sample mode.
+    # WARNING: Execution may take several minutes on BigQuery.
+    # WARNING: Consumes more quota than sample mode.
 
     Returns:
         pd.DataFrame: Tous les événements du Bénin 2025 dans GDELT
@@ -312,7 +315,7 @@ def run_full_extraction() -> pd.DataFrame:
     logger.info("EXTRACTION COMPLÈTE (SANS LIMITE) — DÉMARRAGE")
     logger.info("=" * 55)
 
-    create_directories(RAW_DIR, SAMPLES_DIR)
+    create_directories(RAW_DIR)
     client = get_bigquery_client()
 
     df = extract_data(client, limit=None)

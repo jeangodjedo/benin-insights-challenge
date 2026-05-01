@@ -21,49 +21,62 @@ import json
 import pandas as pd
 from datetime import datetime
 
-from config import (
+from .config import (
     PROCESSED_DIR, SAMPLES_DIR, RAW_DIR,
     PROCESSED_FILE, PARQUET_FILE, JSON_FILE, QUALITY_REPORT,
 )
-from utils import logger, timer, create_directories, validate_dataframe
+from . import __version__
+from .utils import logger, timer, create_directories, validate_dataframe
 
 
 @timer
 def save_to_csv(df: pd.DataFrame, filepath: str) -> None:
     """
-    Sauvegarde en CSV UTF-8.
-    Format universel pour Data Analyst (Excel, Tableau, Power BI).
+    Save to CSV UTF-8.
+    Universal format for Data Analyst (Excel, Tableau, Power BI).
     """
-    df.to_csv(filepath, index=False, encoding="utf-8")
-    size_kb = round(os.path.getsize(filepath) / 1024, 1)
-    logger.info(f"✅ CSV     : {filepath} ({size_kb} KB, {len(df):,} lignes)")
+    try:
+        df.to_csv(filepath, index=False, encoding="utf-8")
+        size_kb = round(os.path.getsize(filepath) / 1024, 1)
+        logger.info(f"[OK] CSV saved: {filepath} ({size_kb} KB, {len(df):,} rows)")
+    except Exception as e:
+        logger.error(f"[ERROR] Failed to save CSV to {filepath}: {e}")
+        raise
 
 
 @timer
 def save_to_parquet(df: pd.DataFrame, filepath: str) -> None:
     """
-    Sauvegarde en Parquet compressé (snappy).
-    5-10x plus compact que CSV, types préservés — idéal ML Engineer.
-    Nécessite pyarrow (inclus dans requirements.txt).
+    Save to Parquet compressed (snappy).
+    5-10x more compact than CSV, types preserved — ideal for ML Engineer.
+    Requires pyarrow (included in requirements.txt).
     """
-    df.to_parquet(filepath, index=False, compression="snappy")
-    size_kb = round(os.path.getsize(filepath) / 1024, 1)
-    logger.info(f"✅ Parquet : {filepath} ({size_kb} KB)")
+    try:
+        df.to_parquet(filepath, index=False, compression="snappy")
+        size_kb = round(os.path.getsize(filepath) / 1024, 1)
+        logger.info(f"[OK] Parquet saved: {filepath} ({size_kb} KB)")
+    except Exception as e:
+        logger.error(f"[ERROR] Failed to save Parquet to {filepath}: {e}")
+        raise
 
 
 @timer
 def save_to_json(df: pd.DataFrame, filepath: str) -> None:
     """
-    Sauvegarde en JSON orienté records.
-    Utile pour notebooks Jupyter et API FastAPI du Data Scientist.
-    Les colonnes datetime sont converties en string avant sérialisation.
+    Save to JSON oriented records.
+    Useful for Jupyter notebooks and FastAPI of Data Scientist.
+    Datetime columns are converted to string before serialization.
     """
-    df_copy = df.copy()
-    for col in df_copy.select_dtypes(include=["datetime64[ns]"]).columns:
-        df_copy[col] = df_copy[col].astype(str)
-    df_copy.to_json(filepath, orient="records", force_ascii=False, indent=2)
-    size_kb = round(os.path.getsize(filepath) / 1024, 1)
-    logger.info(f"✅ JSON    : {filepath} ({size_kb} KB)")
+    try:
+        df_copy = df.copy()
+        for col in df_copy.select_dtypes(include=["datetimetz", "datetime64[ns]"]).columns:
+            df_copy[col] = df_copy[col].dt.strftime("%Y-%m-%dT%H:%M:%S")
+        df_copy.to_json(filepath, orient="records", force_ascii=False, indent=2)
+        size_kb = round(os.path.getsize(filepath) / 1024, 1)
+        logger.info(f"[OK] JSON saved: {filepath} ({size_kb} KB)")
+    except Exception as e:
+        logger.error(f"[ERROR] Failed to save JSON to {filepath}: {e}")
+        raise
 
 
 @timer
@@ -88,7 +101,7 @@ def generate_quality_report(df: pd.DataFrame) -> dict:
 
     report = {
         "generated_at"    : datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "pipeline_version": "1.0",
+        "pipeline_version": __version__,
         "challenge"       : "Bénin Insights Challenge 2026",
         "periode"         : "Janvier 2025 → Décembre 2025",
 
@@ -140,7 +153,7 @@ def generate_quality_report(df: pd.DataFrame) -> dict:
     with open(QUALITY_REPORT, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
 
-    logger.info(f"✅ Rapport : {QUALITY_REPORT}")
+    logger.info(f"[OK] Quality report: {QUALITY_REPORT}")
     return report
 
 
@@ -165,7 +178,7 @@ def run_load(df: pd.DataFrame) -> None:
     if not validate_dataframe(df, "données à sauvegarder"):
         raise ValueError("DataFrame invalide — chargement annulé.")
 
-    create_directories(PROCESSED_DIR, SAMPLES_DIR, RAW_DIR)
+    create_directories(PROCESSED_DIR)
 
     save_to_csv(df, PROCESSED_FILE)
     save_to_parquet(df, PARQUET_FILE)

@@ -10,15 +10,19 @@ Usage depuis le terminal (racine du projet) :
 Pré-requis (une seule fois par membre de l'équipe) :
     gcloud auth application-default login
 
-Auteur  : Équipe Bénin Insights Challenge 2026
+Auteur  : Équipe Bénn Insights Challenge 2026
 Date    : Avril 2026
 Version : 1.0
 """
 
 import sys
+import os
 import argparse
 import traceback
 from datetime import datetime
+
+# Add pipeline/ to sys.path to enable absolute imports when running from project root
+sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 
 from extract   import run_full_extraction, run_sample_extraction
 from transform import run_transform
@@ -56,7 +60,7 @@ Questions couvertes :
         type=str,
         choices=["full", "sample"],
         default="sample",
-        help="'sample' (5k lignes, test) ou 'full' (100k lignes, production)"
+        help="'sample' (5,000 rows for testing) or 'full' (no limit, all available data)"
     )
     return parser.parse_args()
 
@@ -110,7 +114,6 @@ def print_summary(df, start_time: datetime, mode: str) -> None:
     logger.info("╚══════════════════════════════════════════════════╝")
 
 
-@timer
 def run_pipeline(mode: str = "sample") -> None:
     """
     Orchestre EXTRACT → TRANSFORM → LOAD.
@@ -145,7 +148,7 @@ def run_pipeline(mode: str = "sample") -> None:
         print_summary(df_clean, start_time, mode)
 
     except Exception as e:
-        logger.error(f"❌ ERREUR : {e}")
+        logger.error(f"[ERROR] {e}")
         logger.error(traceback.format_exc())
         sys.exit(1)
 
