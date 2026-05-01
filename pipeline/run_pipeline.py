@@ -21,8 +21,8 @@ import argparse
 import traceback
 from datetime import datetime
 
-# Add pipeline/ to sys.path to enable absolute imports when running from project root
-sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+# Add parent directory to sys.path to import pipeline as a package
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from extract   import run_full_extraction, run_sample_extraction
 from transform import run_transform

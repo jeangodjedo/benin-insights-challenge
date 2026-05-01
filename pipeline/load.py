@@ -21,12 +21,14 @@ import json
 import pandas as pd
 from datetime import datetime
 
-from .config import (
+from pipeline.config import (
     PROCESSED_DIR, SAMPLES_DIR, RAW_DIR,
     PROCESSED_FILE, PARQUET_FILE, JSON_FILE, QUALITY_REPORT,
 )
-from . import __version__
-from .utils import logger, timer, create_directories, validate_dataframe
+from pipeline.utils import logger, timer, create_directories, validate_dataframe
+
+# Version defined in __init__.py
+__version__ = "1.0"
 
 
 @timer

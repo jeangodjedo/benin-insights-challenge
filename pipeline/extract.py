@@ -35,7 +35,7 @@ from google.cloud import bigquery
 # Retry for transient errors (quota, timeout, network issues)
 from google.api_core.retry import Retry
 
-from .config import (
+from pipeline.config import (
     GCP_PROJECT_ID,
     BQ_TABLE_FULL,
     COUNTRY_CODE,
@@ -49,8 +49,9 @@ from .config import (
     SAMPLE_FILE,
     RAW_DIR,
     SAMPLES_DIR,
+    END_YEAR,
 )
-from .utils import logger, timer, create_directories, validate_dataframe
+from pipeline.utils import logger, timer, create_directories, validate_dataframe
 
 
 # ─────────────────────────────────────────────────────────────────

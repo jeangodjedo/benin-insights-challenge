@@ -46,8 +46,8 @@ Version : 1.2
 import re
 import pandas as pd
 import numpy as np
-from .utils import logger, timer, validate_dataframe
-from .config import COUNTRY_CODE, COUNTRY_ACTOR_CODE
+from pipeline.utils import logger, timer, validate_dataframe
+from pipeline.config import COUNTRY_CODE, COUNTRY_ACTOR_CODE
 
 
 # ─────────────────────────────────────────────────────────────────

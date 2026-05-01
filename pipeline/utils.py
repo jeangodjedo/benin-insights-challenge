@@ -19,7 +19,7 @@ import time
 import logging
 import functools
 import pandas as pd
-from .config import LOG_LEVEL, LOG_FORMAT
+from pipeline.config import LOG_LEVEL, LOG_FORMAT
 
 
 # ─────────────────────────────────────────────────────────────────
