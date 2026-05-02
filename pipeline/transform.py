@@ -22,26 +22,18 @@ Transformations aligned with the 5 priority analytical questions:
          Added columns: benin_role, actor1_type_label,
                         actor2_type_label, quad_class_label
 
-Changelog:
-    v1.0 - Initial version
-    v1.1 - Fixed benin_role logic: "non défini" -> "Contexte"
-    v1.2 - Fixed event_root_label: int64 -> zero-padded str before mapping
-         - Fixed benin_role: NaN values converted to "" before comparison
-         - Fixed actor code: COUNTRY_CODE "BN" -> COUNTRY_ACTOR_CODE "BEN"
-    v1.3 - BUG-03: Removed dead code (double event_root_label calculation)
-         - MAJ-06: Vectorized benin_role using pandas operations
-         - MAJ-09: All inline comments translated to English
+For full version history, see CHANGELOG.md at the project root.
 
 Author  : Team 7 — Bénin Insights Challenge 2026
 Date    : May 2026
-Version : 1.2
+Version : 1.3
 """
 
 import re
 import pandas as pd
 import numpy as np
 from .utils import logger, timer, validate_dataframe
-from .config import COUNTRY_ACTOR_CODE
+from .config import COUNTRY_ACTOR_CODE, DEPT_LABELS, GEO_TYPE_LABELS
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -137,7 +129,14 @@ def clean_basic(df: pd.DataFrame) -> pd.DataFrame:
     n = len(df)
     logger.info(f"Basic cleaning - {n:,} rows in")
 
-    df = df.drop_duplicates()
+    # GLOBALEVENTID-based deduplication — exact and without data loss.
+    # Generic drop_duplicates() on all columns risks removing distinct
+    # events that happen to share many column values.
+    if "GLOBALEVENTID" in df.columns:
+        df = df.drop_duplicates(subset=["GLOBALEVENTID"])
+    else:
+        df = df.drop_duplicates()
+
     df = df.dropna(subset=["SQLDATE"])
     df = df.dropna(subset=["SOURCEURL"])
     df = df.reset_index(drop=True)
@@ -186,11 +185,13 @@ def convert_types(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     # DATEADDED format GDELT YYYYMMDDHHMMSS -> datetime (Q3)
-    # Take only the first 8 characters (date only)
+    # Fix: preserve all 14 characters to retain hour/minute/second precision.
+    # The previous str[:8] truncated to date-only, making all events
+    # indexed on the same day appear to have identical propagation delays.
     if "DATEADDED" in df.columns:
         df["DATEADDED"] = pd.to_datetime(
-            df["DATEADDED"].astype(str).str[:8],
-            format="%Y%m%d",
+            df["DATEADDED"].astype(str).str[:14],
+            format="%Y%m%d%H%M%S",
             errors="coerce"
         )
 
@@ -252,6 +253,30 @@ def enrich_data(df: pd.DataFrame) -> pd.DataFrame:
         .map(EVENT_ROOT_LABELS)
         .fillna("Autre")
     )
+
+    # Intra-Benin geographic breakdown — enabled by ActionGeo_ADM1Code
+    # Maps FIPS10-4 subdivision codes to French department names.
+    # Enables department-level analysis and choropleth maps.
+    if "ActionGeo_ADM1Code" in df.columns:
+        df["event_department"] = (
+            df["ActionGeo_ADM1Code"]
+            .map(DEPT_LABELS)
+            .fillna("Bénin (général)")
+        )
+    else:
+        df["event_department"] = "Bénin (général)"
+
+    # Geographic precision level — enables filtering by location quality
+    # 1=country-level only, 3=city, 4=precise point
+    if "ActionGeo_Type" in df.columns:
+        df["action_geo_precision"] = (
+            df["ActionGeo_Type"]
+            .map(GEO_TYPE_LABELS)
+            .fillna("Inconnu")
+        )
+    else:
+        df["action_geo_precision"] = "Inconnu"
+
     logger.info("  Q1 [OK]")
 
     # -- Q2: Tone and stability categories ------------------------

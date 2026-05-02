@@ -45,9 +45,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR  = BASE_DIR / "data"
 RAW_DIR   = DATA_DIR / "raw"
 
-# MAJ-04: Aligned with actual folder structure (data/clean/)
-# and consistent with README documentation
-PROCESSED_DIR = DATA_DIR / "clean"
+# Data output directories
+PROCESSED_DIR = DATA_DIR / "processed"
 SAMPLES_DIR   = DATA_DIR / "sample"
 
 
@@ -146,6 +145,9 @@ END_MONTHYEAR   = int(f"{END_YEAR}12")     # e.g. 202512 (December)
 # Q5 — Actor or bystander    : Actor1CountryCode, Actor2CountryCode, IsRootEvent
 
 COLUMNS = [
+    # -- Unique identifier -----------------------------------------
+    "GLOBALEVENTID",    # Unique GDELT event ID — used for exact deduplication
+
     # -- Temporal --------------------------------------------------
     "SQLDATE",       # Event date in YYYYMMDD format          — Q1, Q2, Q3
     "DATEADDED",     # GDELT indexing date YYYYMMDDHHMMSS     — Q3 propagation delay
@@ -154,9 +156,11 @@ COLUMNS = [
 
     # -- Actors — Q5 (actor or bystander) -------------------------
     "Actor1Name",           # Name of the initiating actor
+    "Actor1Code",           # Compound code: country + type (e.g. BENGOV, BENCVL) — Q5 precision
     "Actor1CountryCode",    # CAMEO country code of actor 1 (3 letters, e.g. BEN)
     "Actor1Type1Code",      # Type of actor 1 (GOV, MIL, BUS, NGO...)
     "Actor2Name",           # Name of the receiving actor
+    "Actor2Code",           # Compound code: country + type for actor 2 — Q5 precision
     "Actor2CountryCode",    # CAMEO country code of actor 2 (3 letters)
     "Actor2Type1Code",      # Type of actor 2
     "IsRootEvent",          # 1 = root event, 0 = derived event
@@ -177,12 +181,59 @@ COLUMNS = [
     # -- Geography ------------------------------------------------
     "ActionGeo_FullName",       # Full name of the event location
     "ActionGeo_CountryCode",    # Country code of the location (GDELT 2-letter, e.g. BN)
+    "ActionGeo_Type",           # Geographic precision: 1=country 2=region 3=city 4=precise
+    "ActionGeo_ADM1Code",       # Administrative subdivision code (e.g. BN18=Littoral/Cotonou)
     "ActionGeo_Lat",            # Latitude for mapping
     "ActionGeo_Long",           # Longitude for mapping
 
     # -- Media source — Q4 ----------------------------------------
     "SOURCEURL",    # Full URL of the source article
 ]
+
+
+# ─────────────────────────────────────────────────────────────────
+# BENIN DEPARTMENT MAPPING — ActionGeo_ADM1Code -> French name
+# ─────────────────────────────────────────────────────────────────
+# Used in transform.py to add an event_department column.
+# Enables intra-country geographic analysis and department-level maps.
+# Source: GDELT FIPS10-4 geographic codes for Benin.
+
+DEPT_LABELS = {
+    "BN00": "National",
+    "BN01": "Atakora",
+    "BN02": "Atlantique",
+    "BN03": "Borgou",
+    "BN04": "Mono",
+    "BN05": "Ouémé",
+    "BN06": "Zou",
+    "BN07": "Collines",
+    "BN08": "Couffo",
+    "BN09": "Donga",
+    "BN10": "Littoral",   # Cotonou
+    "BN11": "Plateau",
+    "BN12": "Alibori",
+    "BN13": "Atacora",
+    "BN14": "Atlantique",
+    "BN15": "Borgou",
+    "BN16": "Collines",
+    "BN17": "Couffo",
+    "BN18": "Donga",
+    "BN19": "Littoral",
+    "BN20": "Mono",
+    "BN21": "Ouémé",
+    "BN22": "Plateau",
+    "BN23": "Zou",
+}
+
+# Geographic precision type labels
+GEO_TYPE_LABELS = {
+    0: "Inconnu",
+    1: "Pays",
+    2: "Région administrative",
+    3: "Ville",
+    4: "Lieu précis",
+    5: "Lieu précis",
+}
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -214,7 +265,7 @@ SAMPLE_FILE    = SAMPLES_DIR   / "benin_gdelt_sample.csv"
 # MIN-01: Single source of truth for pipeline version.
 # Imported by load.py for the quality report.
 
-PIPELINE_VERSION = "1.2"
+PIPELINE_VERSION = "1.3"
 
 
 # ─────────────────────────────────────────────────────────────────
