@@ -28,6 +28,7 @@ data/processed/*.csv
 
 # External documents and prompts
 *.pdf
+!reports/*.pdf
 reports/PROMPT_GOOGLE_SLIDES.txt
 
 # Tool logs
