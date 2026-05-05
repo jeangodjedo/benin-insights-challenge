@@ -81,7 +81,7 @@ benin-insights-challenge/
 ### 1. Cloner le dépôt
 
 ```bash
-git clone https://github.com/votre-org/benin-insights-challenge.git
+git clone https://github.com/jeangodjedo/benin-insights-challenge.git
 cd benin-insights-challenge
 ```
 

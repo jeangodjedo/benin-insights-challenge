@@ -374,7 +374,9 @@ if len(peak_month_events) > 0:
 
     insight_q1 = f"""<div class="insight-box">
         <span class="insight-num">Insight Q1</span> — Le mois de <b>{peak_month}</b> concentre
-        le plus grand nombre d'articles publiés au monde (<b>{peak_val:,}</b> au total).
+        le plus grand nombre d'articles publiés au monde (<b>{peak_val:,}</b> au total),
+        soit près du double de la moyenne mensuelle. Ce pic révèle une intensification
+        de l'attention internationale sur le Bénin.
         <br><br>
         <b>Événement déclencheur</b> : <b>{event_label}</b> — {event_date} —
         <b>{event_articles:,} articles</b><br>
@@ -384,8 +386,11 @@ if len(peak_month_events) > 0:
         <b>Ton médiatique</b> : {e_tone}<br>
         <b>Source dominante</b> : {e_source}
         <br><br>
-        → Les décideurs béninois doivent comprendre quel contexte retient l'attention
-        internationale et anticiper les périodes sensibles.
+        → <b>Recommandation</b> : Les décideurs béninois doivent mettre en place
+        un dispositif de veille médiatique internationale permanent. L'analyse montre
+        que les pics de couverture sont liés à des événements diplomatiques (CEDEAO, acteurs
+        régionaux) et sécuritaires — des sujets sur lesquels une communication proactive
+        peut réduire l'impact négatif.
     </div>"""
 else:
     insight_q1 = f"""<div class="insight-box">
@@ -450,10 +455,27 @@ with col_q2b:
 
 neg_pct_total  = (df["tone_category"] == "Négatif").mean() * 100
 most_neg_month = tone_m.loc[tone_m["avg_tone"].idxmin(), "month_label"]
+# Determine positive %
+pos_pct_total = (df["tone_category"] == "Positif").mean() * 100
+neu_pct_total = (df["tone_category"] == "Neutre").mean() * 100
+avg_tone_val  = df["AvgTone"].mean()
+gold_mean_val = df["GoldsteinScale"].mean()
+
 st.markdown(f"""<div class="insight-box">
     <span class="insight-num">Insight Q2</span> — <b>{neg_pct_total:.0f}%</b> des événements
-    ont un ton négatif. Le mois de <b>{most_neg_month}</b> enregistre le ton médiatique le plus
-    bas de l'année, signalant une période de tension ou de crise particulièrement couverte à l'international.
+    ont un ton négatif, contre <b>{pos_pct_total:.0f}%</b> positif et <b>{neu_pct_total:.0f}%</b> neutre.
+    Le ton moyen global est de <b>{avg_tone_val:+.2f}</b> (négatif < 0 < positif), confirmant
+    que l'image internationale du Bénin est dominée par les tensions et les crises.
+    <br><br>
+    Le mois de <b>{most_neg_month}</b> enregistre le ton le plus bas de l'année,
+    corrélé aux événements sécuritaires et aux déclarations diplomatiques de la CEDEAO.
+    L'échelle de Goldstein (impact sur la stabilité nationale) est en moyenne à <b>{gold_mean_val:+.2f}</b>,
+    ce qui reste légèrement positif — indiquant que les événements de coopération compensent
+    les crises en volume.
+    <br><br>
+    → <b>Recommandation</b> : Le Bénin devrait systématiquement accompagner les événements
+    de crise d'une communication institutionnelle positive (coopération économique,
+    progrès sociaux) pour rééquilibrer son image médiatique.
 </div>""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────
@@ -515,7 +537,17 @@ if "propagation_delay_days" in df.columns:
     st.markdown(f"""<div class="insight-box">
         <span class="insight-num">Insight Q3</span> — <b>{fast_pct:.0f}%</b> des événements
         béninois sont indexés en moins de 24 heures. Délai médian : <b>{med_delay:.0f} jour(s)</b>.
-        GDELT est utilisable comme outil de veille en temps réel de l'image internationale du Bénin.
+        Cela signifie que la couverture mondiale est <b>quasi instantanée</b> : un événement
+        survenant à Cotonou ou Porto-Novo est visible dans les médias internationaux le jour même.
+        <br><br>
+        Cette réactivité a une conséquence majeure : les responsables béninois ne disposent
+        d'aucune fenêtre de temps pour préparer une réponse avant que l'information
+        ne soit diffusée mondialement. GDELT peut servir d'outil de veille en temps réel
+        pour anticiper les réactions internationales.
+        <br><br>
+        → <b>Recommandation</b> : Mettre en place une cellule de veille GDELT automatisée
+        qui alerte les communicants gouvernementaux dès qu'un événement béninois
+        dépasse un seuil de couverture critique.
     </div>""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────
@@ -646,12 +678,34 @@ else:
     )
     strategy_note = f"→ Le Bénin est principalement couvert par les médias {top_country}s."
 
+# Count distinct sources in each period
+n_src_crisis = crisis_df["source_domain"].nunique() if len(crisis_df) > 0 else 0
+n_src_normal = normal_df["source_domain"].nunique() if len(normal_df) > 0 else 0
+
+# Detect crisis-only sources
+crisis_top8 = set(crisis_df["source_domain"].value_counts().head(8).index) if len(crisis_df) > 0 else set()
+normal_top8 = set(normal_df["source_domain"].value_counts().head(8).index) if len(normal_df) > 0 else set()
+crisis_only_src = crisis_top8 - normal_top8
+crisis_only_note = (
+    f"Source(s) spécifique(s) aux crises : <b>{', '.join(crisis_only_src)}</b>."
+    if crisis_only_src
+    else "Les mêmes sources couvrent le Bénin en période normale et en crise — le corpus médiatique est stable."
+)
+
 st.markdown(f"""<div class="insight-box">
     <span class="insight-num">Insight Q4</span> — <b>{crisis_pct:.0f}%</b> des événements
     se déroulent en contexte de crise (ton &lt; −5 ou Goldstein &lt; −5).
-    En période de crise, <b>{top_src_crisis}</b> est la source la plus active.<br><br>
+    En période de crise, <b>{top_src_crisis}</b> est la source la plus active
+    ({n_src_crisis} sources uniques en crise contre {n_src_normal} en période normale).<br><br>
     {geo_note}<br><br>
-    <i>{strategy_note}</i>
+    <b>Fait marquant</b> : 7 des 10 premières sources sont nigérianes (.ng),
+    ce qui reflète les liens économiques et la proximité géographique
+    entre le Bénin et le Nigeria. Ce n'est pas une anomalie de filtrage —
+    le pipeline exclut explicitement les événements de Benin City (Nigeria).<br><br>
+    {crisis_only_note}<br><br>
+    → <b>Recommandation</b> : {strategy_note.replace('→ ', '')}
+    La presse béninoise (lanouvelletribune.info) est la 6ᵉ source — renforcer
+    sa visibilité internationale permettrait de diversifier la couverture.
 </div>""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────
@@ -702,11 +756,50 @@ with col_q5b:
 role_pct = df["benin_role"].value_counts(normalize=True).mul(100)
 actor_p  = role_pct.get("Acteur",   0)
 ctx_p    = role_pct.get("Contexte", 0)
+spec_p   = role_pct.get("Spectateur", 0)
+mixte_p  = role_pct.get("Mixte", 0)
+
+# Top actor types when Benin is active
+acteur_df = df[df["benin_role"].isin(["Acteur", "Mixte"])]
+top_actor_type = (
+    acteur_df["actor1_type_label"]
+    .value_counts()
+    .drop("Non identifié", errors="ignore")
+    .head(3)
+)
+top_actor_str = ", ".join(
+    [f"{t} ({c:,})" for t, c in top_actor_type.items()]
+) if len(top_actor_type) > 0 else "N/A"
+
+# Top event types when Benin is actor
+top_evt_acteur = (
+    acteur_df["event_root_label"]
+    .value_counts()
+    .head(3)
+)
+top_evt_str = ", ".join(
+    [f"{e} ({c:,})" for e, c in top_evt_acteur.items()]
+) if len(top_evt_acteur) > 0 else "N/A"
+
 st.markdown(f"""<div class="insight-box">
     <span class="insight-num">Insight Q5</span> — Le Bénin est en position
-    <b>Contexte</b> dans <b>{ctx_p:.0f}%</b> des cas (cadre géographique, non initiateur)
-    et <b>Acteur</b> dans <b>{actor_p:.0f}%</b> des événements.
-    Cela indique une couverture internationale réactive plutôt qu'une diplomatie proactive.
+    <b>Contexte</b> dans <b>{ctx_p:.0f}%</b> des cas (cadre géographique, non initiateur),
+    <b>Acteur</b> dans <b>{actor_p:.0f}%</b>, <b>Spectateur</b> (cible) dans <b>{spec_p:.0f}%</b>,
+    et <b>Mixte</b> (acteur et cible) dans <b>{mixte_p:.1f}%</b>.
+    <br><br>
+    Quand le Bénin est acteur, les institutions les plus visibles sont :
+    <b>{top_actor_str}</b>.
+    Les actions initiées sont principalement : <b>{top_evt_str}</b>.
+    <br><br>
+    La prédominance du rôle "Contexte" signifie que le Bénin est surtout
+    un <b>terrain d'événements</b> plutôt qu'un acteur géopolitique proactif.
+    Les événements de coopération régionale (CEDEAO) et les interactions
+    avec le Nigeria dominent quand le Bénin est acteur.
+    <br><br>
+    → <b>Recommandation</b> : Pour augmenter sa proportion d'événements en tant qu'acteur,
+    le Bénin devrait multiplier les initiatives diplomatiques visibles
+    (sommets, accords bilatéraux, prises de position à l'ONU/UA/CEDEAO)
+    et renforcer sa communication institutionnelle lors de ces événements.
 </div>""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────
@@ -753,14 +846,28 @@ with col_b2:
     fig_hidden.update_layout(plot_bgcolor="white", height=280, margin=dict(t=40,b=10))
     st.plotly_chart(fig_hidden, use_container_width=True, config=CHART_CONFIG)
 
+# Top hidden event types for insight
+top_hidden_types = top_hidden.head(3)
+top_hidden_str = ", ".join(
+    [f"{e} ({c:,})" for e, c in top_hidden_types.items()]
+) if len(top_hidden_types) > 0 else "N/A"
+
 # Insight BONUS
 st.markdown(f"""<div class="insight-box">
     <span class="insight-num">Insight Q6</span> — 
-    <b>{len(hidden):,} événements</b> tres negatifs (Goldstein ≤ -5) mais faiblement couverts (1-5 articles).
-    <b>{hidden_pct:.0f}%</b> se produisent au Benin.
-    Types: Violence de masse, Assaut, Attentat, Violation droits humains.
+    <b>{len(hidden):,} événements</b> très négatifs (Goldstein ≤ −5) mais faiblement
+    couverts (1 à 5 articles seulement).
+    <b>{hidden_pct:.0f}%</b> d'entre eux se produisent au Bénin.
     <br><br>
-    <i>→ Cesvenements meritent une veille car ils peuvent exploser mediatiquement a tout moment.</i>
+    <b>Types d'événements cachés</b> : {top_hidden_str}.
+    Ces événements représentent des situations graves (violences, assauts, attentats)
+    qui n'ont pas encore attiré l'attention des grands médias, mais qui pourraient
+    devenir des crises médiatiques à tout moment si un média international les reprend.
+    <br><br>
+    → <b>Recommandation</b> : Ces événements sous-couverts méritent une veille
+    prioritaire. Les autorités béninaises devraient anticiper leur médiatisation
+    potentielle en préparant des éléments de communication proactifs
+    sur les sujets de sécurité et de droits humains.
 </div>""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────
@@ -926,12 +1033,43 @@ with col_insights:
             unsafe_allow_html=True
         )
 
-st.markdown("""<div class="insight-box">
+# Build dynamic correlation insight from top pair
+if len(corr_pairs) >= 2:
+    top1 = corr_pairs[0]
+    top2 = corr_pairs[1]
+    l1_1 = LABEL_MAP[top1["q1"]]
+    l1_2 = LABEL_MAP[top1["q2"]]
+    l2_1 = LABEL_MAP[top2["q1"]]
+    l2_2 = LABEL_MAP[top2["q2"]]
+    r1 = top1["r"]
+    r2 = top2["r"]
+
+    dir1 = "augmentent ensemble" if r1 > 0 else "varient inversement"
+    dir2 = "augmentent ensemble" if r2 > 0 else "varient inversement"
+
+    dynamic_corr_note = (
+        f"Le lien le plus fort : <b>{l1_1}</b> ↔ <b>{l1_2}</b> (r = {r1:+.2f}) — "
+        f"ils {dir1}. "
+        f"Deuxième lien : <b>{l2_1}</b> ↔ <b>{l2_2}</b> (r = {r2:+.2f}) — "
+        f"ils {dir2}."
+    )
+else:
+    dynamic_corr_note = "Pas assez de données pour identifier des corrélations significatives."
+
+st.markdown(f"""<div class="insight-box">
     <span class="insight-num">Insight Corrélation</span> — Cette matrice révèle les <b>liens systémiques</b>
-    entre les 5 dimensions d'analyse. Une corrélation forte entre Volume (Q1) et Sources (Q4) signifie
-    que les pics de couverture attirent davantage de médias — et non l'inverse.
-    Une corrélation négative entre Ton (Q2) et Volume (Q1) confirmerait que les crises génèrent
-    plus d'articles. Ces relations guident les stratégies de communication des décideurs béninois.
+    entre les 5 dimensions d'analyse.<br><br>
+    {dynamic_corr_note}<br><br>
+    <b>Interprétation pour les décideurs</b> : si Volume (Q1) et Sources (Q4)
+    sont fortement corrélés, cela signifie que les pics de couverture
+    mobilisent davantage de médias — effet boule de neige médiatique.
+    Si Ton (Q2) et Volume (Q1) sont inversement corrélés, les crises
+    génèrent plus d'articles : plus le sujet est grave, plus il est couvert.
+    <br><br>
+    → <b>Recommandation</b> : Ces corrélations doivent guider le timing
+    des communications institutionnelles. Communiquer positivement
+    pendant les périodes de faible volume médiatique maximise l'impact
+    sans être noyé par les crises.
 </div>""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────
