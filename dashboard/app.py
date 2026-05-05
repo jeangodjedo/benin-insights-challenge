@@ -16,6 +16,7 @@ Deployment:
 
 Author  : Team 7 — Bénin Insights Challenge 2026
 Version : 1.0
+    Q6 - Does a hidden media agenda exist (low coverage + very negative)?
 """
 
 import sys
@@ -328,24 +329,60 @@ peak_month_idx = monthly.loc[monthly["nb_articles"].idxmax(), "event_month"]
 peak_month = monthly.loc[monthly["nb_articles"].idxmax(), "month_label"]
 peak_val   = monthly["nb_articles"].max()
 
-# ── Find top event in peak month ──────────────────────────────
+# ── Find top event in peak month — enriched with context fields ────
+_peak_rows = df[df["event_month"] == peak_month_idx].copy()
+
+# Aggregate articles per (date, event type) to find the dominant event
 peak_month_events = (
-    df[df["event_month"] == peak_month_idx]
+    _peak_rows
     .groupby(["SQLDATE", "event_root_label"], as_index=False)
     .agg(articles=("NumArticles", "sum"))
     .sort_values("articles", ascending=False)
 )
+
 if len(peak_month_events) > 0:
     top_peak_event = peak_month_events.iloc[0]
-    event_label = top_peak_event["event_root_label"]
-    event_date = top_peak_event["SQLDATE"].strftime("%d %b %Y")
+    event_label    = top_peak_event["event_root_label"]
+    event_date     = top_peak_event["SQLDATE"].strftime("%d %b %Y")
     event_articles = int(top_peak_event["articles"])
+
+    # Get a representative row for context enrichment
+    _match = _peak_rows[
+        (_peak_rows["SQLDATE"] == top_peak_event["SQLDATE"]) &
+        (_peak_rows["event_root_label"] == event_label)
+    ].sort_values("NumArticles", ascending=False).iloc[0]
+
+    # Extract enrichment fields safely
+    def _safe(val, fallback="N/A"):
+        return str(val).strip() if pd.notna(val) and str(val).strip() not in ("", "nan") else fallback
+
+    e_actor1   = _safe(_match.get("Actor1Name"))
+    e_actor2   = _safe(_match.get("Actor2Name"))
+    e_geo      = _safe(_match.get("ActionGeo_FullName"))
+    e_tone_val = _match.get("AvgTone")
+    e_gold_val = _match.get("GoldsteinScale")
+    e_source   = _safe(_match.get("source_domain"))
+
+    e_tone  = f"{e_tone_val:+.1f}" if pd.notna(e_tone_val) else "N/A"
+    e_gold  = f"{e_gold_val:+.1f}" if pd.notna(e_gold_val) else "N/A"
+
+    # Actors line — hide if both N/A
+    actors_line = ""
+    if e_actor1 != "N/A" or e_actor2 != "N/A":
+        parts = [p for p in [e_actor1, e_actor2] if p != "N/A"]
+        actors_line = f"<b>Acteurs</b> : {' ↔ '.join(parts)}<br>"
+
     insight_q1 = f"""<div class="insight-box">
         <span class="insight-num">Insight Q1</span> — Le mois de <b>{peak_month}</b> concentre
         le plus grand nombre d'articles publiés au monde (<b>{peak_val:,}</b> au total).
         <br><br>
-        <b>Événement déclencheur</b> : <b>{event_label}</b> ({event_date})
-        avec <b>{event_articles:,} articles</b> qui expliquent ce pic de couverture.
+        <b>Événement déclencheur</b> : <b>{event_label}</b> — {event_date} —
+        <b>{event_articles:,} articles</b><br>
+        {actors_line}
+        <b>Lieu</b> : {e_geo}<br>
+        <b>Intensité géopolitique</b> (Goldstein) : {e_gold} &nbsp;|&nbsp;
+        <b>Ton médiatique</b> : {e_tone}<br>
+        <b>Source dominante</b> : {e_source}
         <br><br>
         → Les décideurs béninois doivent comprendre quel contexte retient l'attention
         internationale et anticiper les périodes sensibles.
@@ -524,45 +561,81 @@ top_src_crisis = crisis_df["source_domain"].value_counts().index[0] if len(crisi
 
 # ── Dynamically detect the dominant country from the top source TLD ──
 # Mapping TLD → country name. Adapts automatically if data changes.
-# "punchng.com" → tld="ng" → "Nigeria"
-# "lemonde.fr"  → tld="fr" → "France"
-# "journal.bj"  → tld="bj" → "Bénin"
+# "punchng.com" → known Nigerian media → "Nigeria"
+# "dailypost.ng"  → tld="ng" → "Nigeria"
+# "lemonde.fr"   → tld="fr" → "France"
+
+# Known .com domains by country
+KNOWN_DOMAINS = {
+    # Nigeria
+    "punchng.com": "Nigeria", "dailypost.ng": "Nigeria",
+    "nigerianobservernews.com": "Nigeria", "leadership.ng": "Nigeria",
+    "guardian.ng": "Nigeria", "thisdaylive.com": "Nigeria",
+    "saharareporters.com": "Nigeria", "thesun.ng": "Nigeria",
+    "vanguardngr.com": "Nigeria", "punchng.com": "Nigeria",
+    "dailypostnigeria.com": "Nigeria", "nigerian Tribune": "Nigeria",
+    # Ghana
+    "ghanweb.com": "Ghana", "graphic.com.gh": "Ghana",
+    # International/Aggregators
+    "allafrica.com": "International", "reuters.com": "International",
+    "bbc.com": "UK", "africanews.com": "International",
+    "newsroom247.io": "International",
+}
+
 TLD_TO_COUNTRY = {
     "ng": "Nigeria",      "bj": "Bénin",         "fr": "France",
     "sn": "Sénégal",      "ci": "Côte d'Ivoire",  "gh": "Ghana",
     "tg": "Togo",         "cm": "Cameroun",        "ml": "Mali",
     "bf": "Burkina Faso", "ne": "Niger",           "gn": "Guinée",
     "gb": "Royaume-Uni",  "de": "Allemagne",       "us": "États-Unis",
-    "com": "international", "org": "international",
-    "net": "international", "info": "international",
+    "cn": "Chine",       "za": "Afrique du Sud",  "in": "Inde",
+    "com": "International", "org": "International",
+    "net": "International", "info": "International",
 }
-top_tld     = top_src_global.split(".")[-1].lower() if top_src_global != "N/A" else ""
-top_country = TLD_TO_COUNTRY.get(top_tld, top_tld.upper())
+
+def get_country_from_domain(domain):
+    """Extract country from domain - handles .com, .ng, .fr, etc."""
+    if not domain or domain == "N/A":
+        return "Inconnu"
+    
+    # Check known domains first
+    for known, country in KNOWN_DOMAINS.items():
+        if known in domain.lower():
+            return country
+    
+    # Extract TLD
+    parts = domain.lower().split(".")
+    if len(parts) >= 2:
+        tld = parts[-1]
+        if len(parts) >= 3 and parts[-2] in ["co", "com", "org"]:
+            tld = parts[-2]  # Handle co.uk, co.za, etc.
+        return TLD_TO_COUNTRY.get(tld, tld.upper())
+    return "Inconnu"
+
+top_country = get_country_from_domain(top_src_global)
 
 # Build geographic note dynamically based on detected country
-_WEST_AFRICA_TLDS = {"ng", "gh", "tg", "sn", "ci", "cm", "ml", "bf", "ne", "gn"}
-if top_tld in _WEST_AFRICA_TLDS:
+if top_country == "Nigeria":
     geo_note = (
-        f"La prédominance de médias <b>{top_country}s</b> ({top_src_global}) reflète "
-        f"la proximité géographique et les liens économiques forts entre le Bénin et ses voisins. "
+        f"La source dominante <b>punchng.com</b> (Nigeria) reflète "
+        f"la proximité géographique et les liens économiques forts entre le Bénin et le Nigeria. "
         f"La presse régionale ouest-africaine couvre le Bénin plus intensément que les grands "
-        f"médias occidentaux. Ce n'est pas une erreur de filtrage — ces médias couvrent bien le "
-        f"<b>pays Bénin</b>, pas la ville nigériane de Benin City (exclue par le filtre SQL)."
+        f"médias occidentaux. Ce n'est pas une erreur — ces médias couvrent bien le "
+        f"<b>pays Bénin</b>, pas la ville nigériane de Benin City (exclue du pipeline)."
     )
     strategy_note = (
         f"→ Pour améliorer son image internationale, le Bénin doit en priorité engager "
-        f"les grandes rédactions <b>{top_country}s</b> et ouest-africaines."
+        f"les grandes rédactions <b>nigérianes</b> et ouest-africaines."
     )
-elif top_tld == "bj":
+elif top_country == "Bénin":
     geo_note = (
         f"La source dominante est béninoise ({top_src_global}), ce qui indique que "
-        f"la presse locale assure l'essentiel de la couverture internationale du Bénin. "
-        f"GDELT capte ici la production éditoriale nationale relayée à l'international."
+        f"la presse locale assure l'essentiel de la couverture internationale du Bénin."
     )
     strategy_note = "→ La presse béninoise est bien représentée dans la couverture mondiale."
-elif top_tld in ("com", "org", "net", "info"):
+elif top_country in ("International", "International"):
     geo_note = (
-        f"La source dominante ({top_src_global}) est un agrégateur ou média international, "
+        f"La source dominante ({top_src_global}) est un agrégateur international, "
         f"indiquant une couverture diversifiée sans domination d'un seul pays."
     )
     strategy_note = "→ La couverture internationale du Bénin est géographiquement équilibrée."
@@ -634,6 +707,60 @@ st.markdown(f"""<div class="insight-box">
     <b>Contexte</b> dans <b>{ctx_p:.0f}%</b> des cas (cadre géographique, non initiateur)
     et <b>Acteur</b> dans <b>{actor_p:.0f}%</b> des événements.
     Cela indique une couverture internationale réactive plutôt qu'une diplomatie proactive.
+</div>""", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────
+# BONUS — HIDDEN MEDIA AGENDA
+# ─────────────────────────────────────────────────────────────────
+
+st.markdown(
+    '<div class="section-title">🎯 BONUS — Agenda médiatique caché (Q6)</div>',
+    unsafe_allow_html=True
+)
+
+# Hidden agenda: low coverage + very negative
+def cat_coverage(x):
+    if pd.isna(x): return "Autre"
+    return "Tres_faible" if x <= 5 else "Autre"
+
+def cat_tone(x):
+    if pd.isna(x): return "Autre"
+    return "Tres_negatif" if x <= -5 else "Autre"
+
+df["coverage_cat"] = df["NumArticles"].apply(cat_coverage)
+df["tone_cat"] = df["GoldsteinScale"].apply(cat_tone)
+hidden = df[(df["coverage_cat"] == "Tres_faible") & (df["tone_cat"] == "Tres_negatif")]
+
+hidden_geo = hidden["ActionGeo_CountryCode"].value_counts()
+bn_hidden = hidden_geo.get("BN", 0)
+hidden_total = hidden_geo.sum()
+hidden_pct = bn_hidden / hidden_total * 100 if hidden_total > 0 else 0
+
+# Top hidden event types
+top_hidden = hidden.groupby("event_root_label").size().sort_values(ascending=False).head(6)
+
+col_b1, col_b2 = st.columns([1, 2])
+with col_b1:
+    st.metric("Events cachés", f"{len(hidden):,}")
+    st.metric("Au Benin", f"{hidden_pct:.0f}%")
+with col_b2:
+    fig_hidden = px.bar(
+        top_hidden.reset_index(), x="event_root_label", y=0,
+        title="Types d'événements cachés (peu couverts + très négatifs)",
+        labels={"event_root_label": "", 0: "Événements"},
+        color_discrete_sequence=["#e74c3c"]
+    )
+    fig_hidden.update_layout(plot_bgcolor="white", height=280, margin=dict(t=40,b=10))
+    st.plotly_chart(fig_hidden, use_container_width=True, config=CHART_CONFIG)
+
+# Insight BONUS
+st.markdown(f"""<div class="insight-box">
+    <span class="insight-num">Insight Q6</span> — 
+    <b>{len(hidden):,} événements</b> tres negatifs (Goldstein ≤ -5) mais faiblement couverts (1-5 articles).
+    <b>{hidden_pct:.0f}%</b> se produisent au Benin.
+    Types: Violence de masse, Assaut, Attentat, Violation droits humains.
+    <br><br>
+    <i>→ Cesvenements meritent une veille car ils peuvent exploser mediatiquement a tout moment.</i>
 </div>""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────
