@@ -15,14 +15,24 @@ env/
 # Jupyter
 .ipynb_checkpoints/
 
-# Data files
+# Data files - large raw/processed files excluded from git
 data/*.csv
 data/*.parquet
 data/*.xlsx
 data/*.json
+data/raw/
+data/processed/*.csv
 
 # Keep empty data folder
 !data/.gitkeep
+
+# External documents and prompts
+*.pdf
+!reports/*.pdf
+reports/PROMPT_GOOGLE_SLIDES.txt
+
+# Tool logs
+.blackbox/
 
 # Models
 models/*
@@ -35,3 +45,4 @@ models/*
 credentials/
 *.json
 credentials.json
+.idea/.idea/
