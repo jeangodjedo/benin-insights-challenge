@@ -34,9 +34,14 @@ reports/PROMPT_GOOGLE_SLIDES.txt
 # Tool logs
 .blackbox/
 
-# Models
+# Models — block experimental artifacts but ship the production model
+# (required so the Streamlit simulator works on Streamlit Cloud)
 models/*
 !models/.gitkeep
+!models/tone_classifier_rf.pkl
+!models/encoder_benin_role.pkl
+!models/encoder_event_root.pkl
+!models/confusion_matrix_feature_importance.png
 
 # System files
 .DS_Store

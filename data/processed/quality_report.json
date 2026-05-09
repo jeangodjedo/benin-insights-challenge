@@ -1,0 +1,135 @@
+{
+  "generated_at": "2026-05-05 11:12:03",
+  "pipeline_version": "1.3",
+  "challenge": "Bénin Insights Challenge 2026 — iSHEERO x DataCamp Donates",
+  "period": "January 2025 -> December 2025",
+  "volume": {
+    "total_rows": 31504,
+    "total_columns": 45,
+    "columns": [
+      "GLOBALEVENTID",
+      "SQLDATE",
+      "DATEADDED",
+      "MonthYear",
+      "Year",
+      "Actor1Name",
+      "Actor1Code",
+      "Actor1CountryCode",
+      "Actor1Type1Code",
+      "Actor2Name",
+      "Actor2Code",
+      "Actor2CountryCode",
+      "Actor2Type1Code",
+      "IsRootEvent",
+      "EventCode",
+      "EventBaseCode",
+      "EventRootCode",
+      "QuadClass",
+      "GoldsteinScale",
+      "AvgTone",
+      "NumMentions",
+      "NumSources",
+      "NumArticles",
+      "ActionGeo_FullName",
+      "ActionGeo_CountryCode",
+      "ActionGeo_Type",
+      "ActionGeo_ADM1Code",
+      "ActionGeo_Lat",
+      "ActionGeo_Long",
+      "SOURCEURL",
+      "event_date",
+      "event_month",
+      "event_quarter",
+      "event_root_label",
+      "event_department",
+      "action_geo_precision",
+      "tone_category",
+      "stability_category",
+      "propagation_delay_days",
+      "source_domain",
+      "is_crisis_period",
+      "benin_role",
+      "actor1_type_label",
+      "actor2_type_label",
+      "quad_class_label"
+    ]
+  },
+  "period_covered": {
+    "date_min": "2025-01-01",
+    "date_max": "2025-12-31"
+  },
+  "missing_values_pct": {
+    "Actor1Name": 8.1,
+    "Actor1Code": 8.1,
+    "Actor1CountryCode": 40.4,
+    "Actor1Type1Code": 59.9,
+    "Actor2Name": 25.4,
+    "Actor2Code": 25.4,
+    "Actor2CountryCode": 48.5,
+    "Actor2Type1Code": 70.8,
+    "ActionGeo_FullName": 0.1,
+    "ActionGeo_CountryCode": 0.1,
+    "ActionGeo_ADM1Code": 0.1,
+    "ActionGeo_Lat": 0.1,
+    "ActionGeo_Long": 0.1
+  },
+  "q1_coverage_peaks": {
+    "total_articles": 168361,
+    "top_5_event_types": {
+      "Consultation": 8158,
+      "Déclaration publique": 4474,
+      "Engagement / Soutien": 4340,
+      "Appel / Demande": 2100,
+      "Violence de masse": 1771
+    }
+  },
+  "q2_media_tone": {
+    "distribution": {
+      "Négatif": 13928,
+      "Neutre": 9966,
+      "Positif": 7610
+    },
+    "avg_tone": -1.369,
+    "avg_goldstein": 0.683,
+    "stability": {
+      "Neutre": 15686,
+      "Stabilisant": 9532,
+      "Déstabilisant": 6286
+    }
+  },
+  "q3_propagation": {
+    "avg_delay_days": 0.7,
+    "median_delay_days": 0.0
+  },
+  "q4_sources": {
+    "unique_domains": 1471,
+    "top_10_domains": {
+      "punchng.com": 1849,
+      "dailypost.ng": 1770,
+      "nigerianobservernews.com": 1117,
+      "allafrica.com": 992,
+      "leadership.ng": 971,
+      "lanouvelletribune.info": 871,
+      "guardian.ng": 841,
+      "thisdaylive.com": 688,
+      "saharareporters.com": 653,
+      "thesun.ng": 628
+    },
+    "crisis_events_count": 8681
+  },
+  "q5_benin_role": {
+    "distribution": {
+      "Contexte": 12777,
+      "Acteur": 9675,
+      "Spectateur": 8576,
+      "Mixte": 476
+    },
+    "top_actor1_types": {
+      "Non identifié": 18977,
+      "Gouvernement": 4785,
+      "Police": 1112,
+      "Militaire": 905,
+      "Civil / Population": 752
+    }
+  }
+}
