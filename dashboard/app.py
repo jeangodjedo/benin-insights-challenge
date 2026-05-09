@@ -200,21 +200,73 @@ if data_source == "sample":
 # SIDEBAR — FILTERS
 # ─────────────────────────────────────────────────────────────────
 
+TEMPORAL_PRESETS = {
+    "Année complète 2025":              list(range(1, 13)),
+    "T1 (jan – mar)":                   [1, 2, 3],
+    "T2 (avr – juin)":                  [4, 5, 6],
+    "T3 (juil – sept)":                 [7, 8, 9],
+    "T4 (oct – déc)":                   [10, 11, 12],
+    "Pic de crise (décembre)":          [12],
+    "Avant le coup d'État (jan – nov)": list(range(1, 12)),
+    "Personnalisé":                     None,
+}
+
 with st.sidebar:
     st.markdown("## Filtres")
     st.markdown("---")
 
-    # ── Temporal filter
+    # ── Temporal filter — presets + multiselect + optional date range ──
     st.markdown("### Période")
+
+    preset = st.selectbox(
+        "Préréglage temporel",
+        options=list(TEMPORAL_PRESETS.keys()),
+        index=0,
+        help="Sélection rapide d'une période d'intérêt. "
+             "Choisissez 'Personnalisé' pour cocher les mois manuellement.",
+    )
+
     all_months = sorted([int(m) for m in df_full["event_month"].dropna().unique()])
     month_options = {MONTH_LABELS.get(m, str(m)): m for m in all_months}
+
+    if TEMPORAL_PRESETS[preset] is not None:
+        default_month_labels = [
+            MONTH_LABELS[m] for m in TEMPORAL_PRESETS[preset] if m in all_months
+        ]
+    else:
+        default_month_labels = list(month_options.keys())
+
+    # Key tied to preset → multiselect re-initializes when preset changes,
+    # so the default is reliably re-applied.
+    multiselect_key = f"_month_select_{preset}"
     selected_month_labels = st.multiselect(
-        "Mois de l'année 2025",
+        "Affiner par mois",
         options=list(month_options.keys()),
-        default=list(month_options.keys()),
-        help="Filtrez les données par mois pour observer l'évolution temporelle."
+        default=default_month_labels,
+        key=multiselect_key,
+        help="Vous pouvez ajouter ou retirer manuellement des mois.",
     )
     selected_months = [month_options[lbl] for lbl in selected_month_labels]
+
+    use_date_range = st.toggle(
+        "Filtre date précis (jour à jour)",
+        value=False,
+        help="Zoomer sur une plage de dates précise (ex. 1–15 décembre 2025 "
+             "autour du coup d'État du 7 décembre). Lorsqu'activé, ce filtre "
+             "remplace la sélection par mois ci-dessus.",
+    )
+
+    date_range = None
+    if use_date_range and "SQLDATE" in df_full.columns:
+        sqldates = pd.to_datetime(df_full["SQLDATE"], errors="coerce").dropna()
+        min_date = sqldates.min().date()
+        max_date = sqldates.max().date()
+        date_range = st.date_input(
+            "Période précise",
+            value=(min_date, max_date),
+            min_value=min_date,
+            max_value=max_date,
+        )
 
     st.markdown("---")
     st.markdown("### Thématique")
@@ -245,16 +297,53 @@ with st.sidebar:
     else:
         selected_events = []
 
-    st.markdown("---")
-    st.caption("Bénin Insights Challenge 2026\nIROKO Analytics (Équipe 7)\niSHEERO × DataCamp Donates")
-
 # ─────────────────────────────────────────────────────────────────
 # APPLY FILTERS
 # ─────────────────────────────────────────────────────────────────
 
 df = df_full.copy()
-if selected_months:
+
+# Temporal filter — date range takes precedence if active
+if use_date_range:
+    if isinstance(date_range, tuple) and len(date_range) == 2:
+        start_d, end_d = date_range
+        df = df[
+            (pd.to_datetime(df["SQLDATE"]) >= pd.Timestamp(start_d)) &
+            (pd.to_datetime(df["SQLDATE"]) <= pd.Timestamp(end_d))
+        ]
+        active_period_label = (
+            f"Du {pd.Timestamp(start_d).strftime('%d %b %Y')} "
+            f"au {pd.Timestamp(end_d).strftime('%d %b %Y')}"
+        )
+    else:
+        with st.sidebar:
+            st.warning(
+                "Sélectionnez une date de **début** et une date de **fin** "
+                "pour activer le filtre date précis."
+            )
+        st.stop()
+elif not selected_months:
+    # User has unchecked all months: stop with an explicit message
+    # rather than silently re-showing the full dataset.
+    with st.sidebar:
+        st.warning(
+            "Aucun mois sélectionné. Choisissez un préréglage ou cochez "
+            "au moins un mois pour afficher les données."
+        )
+    st.stop()
+else:
     df = df[df["event_month"].isin(selected_months)]
+    # Prefer the preset name when the manual selection still matches it exactly
+    preset_months = TEMPORAL_PRESETS.get(preset)
+    if preset_months is not None and set(selected_months) == set(preset_months):
+        active_period_label = preset
+    elif len(selected_months) == 12:
+        active_period_label = "Année complète 2025"
+    elif len(selected_months) == 1:
+        active_period_label = MONTH_LABELS[selected_months[0]]
+    else:
+        active_period_label = f"{len(selected_months)} mois sélectionnés"
+
 if selected_tones:
     df = df[df["tone_category"].isin(selected_tones)]
 if selected_roles:
@@ -263,8 +352,36 @@ if selected_events and "event_root_label" in df.columns:
     df = df[df["event_root_label"].isin(selected_events)]
 
 if df.empty:
-    st.warning("Aucun événement ne correspond aux filtres sélectionnés.")
+    st.warning(
+        "Aucun événement ne correspond aux filtres sélectionnés. "
+        "Essayez d'élargir la période ou de réinitialiser les filtres thématiques."
+    )
     st.stop()
+
+# ── Live counter pinned at the bottom of the sidebar ──────────
+total_events = len(df_full)
+filtered_events = len(df)
+pct_kept = (filtered_events / total_events * 100) if total_events else 0
+with st.sidebar:
+    st.markdown("---")
+    st.markdown(f"""
+    <div style='background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px;
+                padding:0.75rem 0.9rem; margin-bottom:0.6rem;'>
+        <div style='font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em;
+                    color:#6b7280; font-weight:700;'>Événements affichés</div>
+        <div style='font-size:1.55rem; font-weight:800; color:#1a56db; line-height:1.1;'>
+            {filtered_events:,}
+        </div>
+        <div style='font-size:0.78rem; color:#6b7280; margin-top:0.15rem;'>
+            sur {total_events:,} ({pct_kept:.1f} %)
+        </div>
+        <div style='font-size:0.78rem; color:#1e3a8a; margin-top:0.4rem;
+                    border-top:1px solid #bfdbfe; padding-top:0.35rem;'>
+            <b>Période :</b> {active_period_label}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.caption("Bénin Insights Challenge 2026\nIROKO Analytics (Équipe 7)\niSHEERO × DataCamp Donates")
 
 # ─────────────────────────────────────────────────────────────────
 # KPI CARDS
@@ -409,46 +526,53 @@ if len(peak_month_events) > 0:
             "Cet événement explique le pic massif de couverture et le ton très négatif du mois."
         )
 
-    insight_q1 = f"""<div class="insight-box">
-        <span class="insight-num">Insight Q1</span> — Le mois de <b>{peak_month}</b> concentre
-        le plus grand nombre d'articles publiés au monde (<b>{peak_val:,}</b> au total),
-        soit près du double de la moyenne mensuelle. Ce pic révèle une intensification
-        de l'attention internationale sur le Bénin.
-        {_context_note}
-        <br><br>
-        <b>Événement déclencheur</b> : <b>{event_label}</b> — {event_date} —
-        <b>{event_articles:,} articles</b><br>
-        {actors_line}
-        <b>Lieu</b> : {e_geo}<br>
-        <b>Intensité géopolitique</b> (Goldstein) : {e_gold} &nbsp;|&nbsp;
-        <b>Ton médiatique</b> : {e_tone}<br>
-        <b>Source dominante</b> : {e_source}
-        <div class="audience-grid">
-            <div class="audience-card decideurs">
-                <div class="audience-tag decideurs">🏛️ Décideurs</div>
-                Mettre en place un <b>dispositif de veille médiatique</b> permanent.
-                Les pics sont liés aux événements diplomatiques (CEDEAO) et sécuritaires —
-                une communication proactive peut réduire l'impact négatif.
-            </div>
-            <div class="audience-card journalistes">
-                <div class="audience-tag journalistes">📰 Journalistes</div>
-                <b>Angle éditorial</b> : Pourquoi {peak_month} ? Investiguer les événements
-                de type <b>{event_label}</b> qui déclenchent l'attention mondiale.
-                Les médias nigérians couvrent le Bénin plus que les médias occidentaux — un sujet en soi.
-            </div>
-            <div class="audience-card chercheurs">
-                <div class="audience-tag chercheurs">🔬 Chercheurs</div>
-                <b>Hypothèse</b> : Les pics de couverture suivent-ils un modèle saisonnier
-                ou sont-ils purement événementiels ? Analyser la corrélation entre
-                calendrier politique régional (sommets CEDEAO/UA) et volume médiatique.
-            </div>
-        </div>
-    </div>"""
+    # Note: HTML must NOT be indented inside the f-string — Markdown treats lines
+    # starting with 4+ spaces as code blocks, which breaks rendering when
+    # _context_note is empty (non-December peaks).
+    insight_q1 = (
+        f'<div class="insight-box">'
+        f'<span class="insight-num">Insight Q1</span> — Le mois de <b>{peak_month}</b> concentre '
+        f"le plus grand nombre d'articles publiés au monde (<b>{peak_val:,}</b> au total), "
+        f"soit près du double de la moyenne mensuelle. Ce pic révèle une intensification "
+        f"de l'attention internationale sur le Bénin."
+        f"{_context_note}"
+        f"<br><br>"
+        f"<b>Événement déclencheur</b> : <b>{event_label}</b> — {event_date} — "
+        f"<b>{event_articles:,} articles</b><br>"
+        f"{actors_line}"
+        f"<b>Lieu</b> : {e_geo}<br>"
+        f"<b>Intensité géopolitique</b> (Goldstein) : {e_gold} &nbsp;|&nbsp; "
+        f"<b>Ton médiatique</b> : {e_tone}<br>"
+        f"<b>Source dominante</b> : {e_source}"
+        f'<div class="audience-grid">'
+        f'<div class="audience-card decideurs">'
+        f'<div class="audience-tag decideurs">🏛️ Décideurs</div>'
+        f"Mettre en place un <b>dispositif de veille médiatique</b> permanent. "
+        f"Les pics sont liés aux événements diplomatiques (CEDEAO) et sécuritaires — "
+        f"une communication proactive peut réduire l'impact négatif."
+        f"</div>"
+        f'<div class="audience-card journalistes">'
+        f'<div class="audience-tag journalistes">📰 Journalistes</div>'
+        f"<b>Angle éditorial</b> : Pourquoi {peak_month} ? Investiguer les événements "
+        f"de type <b>{event_label}</b> qui déclenchent l'attention mondiale. "
+        f"Les médias nigérians couvrent le Bénin plus que les médias occidentaux — un sujet en soi."
+        f"</div>"
+        f'<div class="audience-card chercheurs">'
+        f'<div class="audience-tag chercheurs">🔬 Chercheurs</div>'
+        f"<b>Hypothèse</b> : Les pics de couverture suivent-ils un modèle saisonnier "
+        f"ou sont-ils purement événementiels ? Analyser la corrélation entre "
+        f"calendrier politique régional (sommets CEDEAO/UA) et volume médiatique."
+        f"</div>"
+        f"</div>"
+        f"</div>"
+    )
 else:
-    insight_q1 = f"""<div class="insight-box">
-        <span class="insight-num">Insight Q1</span> — Le mois de <b>{peak_month}</b> concentre
-        le plus grand nombre d'articles publiés au monde (<b>{peak_val:,}</b>).
-    </div>"""
+    insight_q1 = (
+        f'<div class="insight-box">'
+        f'<span class="insight-num">Insight Q1</span> — Le mois de <b>{peak_month}</b> concentre '
+        f"le plus grand nombre d'articles publiés au monde (<b>{peak_val:,}</b>)."
+        f"</div>"
+    )
 
 st.markdown(insight_q1, unsafe_allow_html=True)
 
@@ -1556,6 +1680,124 @@ if "event_department" in df.columns:
         height=430, margin=dict(t=50, b=10)
     )
     st.plotly_chart(fig_dept, use_container_width=True, config=CHART_CONFIG)
+
+# ─────────────────────────────────────────────────────────────────
+# MODÈLE ML — Performance du classifieur de ton
+# ─────────────────────────────────────────────────────────────────
+
+st.markdown(
+    '<div class="section-title">Modèle ML — Prédiction du ton médiatique</div>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    "Un classifieur **Random Forest** prédit le ton (Positif / Neutre / Négatif) "
+    "d'un événement béninois à partir de 9 variables GDELT (intensité Goldstein, "
+    "volume d'articles, mois, type CAMEO, rôle du Bénin, etc.). "
+    "Évalué sur un test set stratifié de **6 301 lignes** (20 % du jeu de données ML)."
+)
+
+col_ml1, col_ml2, col_ml3, col_ml4 = st.columns(4)
+with col_ml1:
+    st.metric("Accuracy (test)", "55 %", help="Taux de prédictions correctes sur le test set")
+with col_ml2:
+    st.metric("F1 weighted (test)", "0,55", help="F1-score pondéré par le support des classes")
+with col_ml3:
+    st.metric("F1 CV 5-fold", "0,549 ± 0,009", help="Validation croisée 5-fold sur le train set")
+with col_ml4:
+    st.metric("F1 classe Négatif", "0,64", help="Meilleure performance — classe majoritaire")
+
+col_cm, col_fi = st.columns([3, 2])
+
+with col_cm:
+    st.markdown("**Matrice de confusion & importance des variables**")
+    cm_path = ROOT / "models" / "confusion_matrix_feature_importance.png"
+    if cm_path.exists():
+        st.image(str(cm_path), use_column_width=True)
+    else:
+        st.info("Image non disponible. Régénérer via le notebook.")
+
+with col_fi:
+    st.markdown("**Top des variables prédictives (Gini)**")
+    feature_importance = pd.DataFrame({
+        "Variable": [
+            "GoldsteinScale",
+            "event_month",
+            "event_root_label",
+            "QuadClass",
+            "NumArticles",
+            "NumMentions",
+            "benin_role",
+            "IsRootEvent",
+            "NumSources",
+        ],
+        "Importance": [0.272, 0.217, 0.129, 0.121, 0.068, 0.068, 0.063, 0.060, 0.003],
+    }).sort_values("Importance", ascending=True)
+
+    fig_fi = px.bar(
+        feature_importance,
+        x="Importance", y="Variable",
+        orientation="h",
+        text=feature_importance["Importance"].map(lambda v: f"{v*100:.1f} %"),
+        color="Importance",
+        color_continuous_scale="Blues",
+    )
+    fig_fi.update_traces(textposition="outside")
+    fig_fi.update_layout(
+        height=380, plot_bgcolor="white",
+        coloraxis_showscale=False,
+        margin=dict(t=10, b=10, l=10, r=40),
+        xaxis=dict(showgrid=True, gridcolor="#e5e7eb", tickformat=".0%"),
+        yaxis=dict(title=""),
+    )
+    st.plotly_chart(fig_fi, use_container_width=True, config=CHART_CONFIG)
+
+st.markdown("""
+<div class="insight-box">
+<span class="insight-num">Lecture du modèle.</span>
+L'<b>intensité Goldstein</b> (stabilité de l'événement) et la <b>saisonnalité</b>
+expliquent à elles seules près de la moitié du pouvoir prédictif. Autrement dit,
+<b>la nature de l'événement et le moment de l'année comptent davantage que le volume
+de couverture médiatique</b> pour anticiper le ton. Le modèle reconnaît particulièrement
+bien la classe <b>Négatif</b> (F1 = 0,64), la plus utile pour anticiper les crises
+de communication. La classe Neutre, plus floue par définition, reste le défi.
+</div>
+""", unsafe_allow_html=True)
+
+cta_left, cta_right = st.columns([3, 2])
+with cta_left:
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #1a56db 0%, #7e3af2 100%);
+                color: white; padding: 1.1rem 1.4rem; border-radius: 10px;
+                margin: 0.5rem 0;">
+        <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.9;">
+            Anticipez la couverture médiatique
+        </div>
+        <div style="font-size: 1.05rem; font-weight: 600; margin-top: 0.3rem; line-height: 1.4;">
+            Décrivez un événement et voyez comment les médias mondiaux sont
+            susceptibles d'en parler — avant même qu'il ne soit public.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+with cta_right:
+    st.write("")
+    try:
+        st.page_link(
+            "pages/2_Anticiper_la_couverture.py",
+            label="Anticiper la couverture d'un événement →",
+            use_container_width=True,
+        )
+    except Exception:
+        st.info("Ouvrez la page **Anticiper la couverture** dans le menu de gauche pour tester le modèle.")
+
+with st.expander("Pourquoi Random Forest plutôt qu'un autre modèle ?"):
+    st.markdown("""
+- **Robuste au déséquilibre de classes** (44 % Négatif / 32 % Neutre / 24 % Positif) via `class_weight="balanced"`.
+- **Interprétable** : `feature_importances_` permet de relier les prédictions à des variables analytiques claires (Goldstein, CAMEO) — utile pour le storytelling auprès des décideurs.
+- **Pas de scaling requis** → pipeline simple et reproductible.
+- **Baseline Logistic Regression** également entraîné dans le notebook : Random Forest le surpasse, validant l'hypothèse que les relations entre variables GDELT et ton sont non linéaires.
+- **Pistes Phase 2** : XGBoost, ensembling RF + GBM, embeddings de texte sur les `SOURCEURL`.
+""")
 
 # ─────────────────────────────────────────────────────────────────
 # FOOTER
