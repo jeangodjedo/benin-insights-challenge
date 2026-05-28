@@ -1685,11 +1685,11 @@ with cta_left:
                 color: white; padding: 1.1rem 1.4rem; border-radius: 10px;
                 margin: 0.5rem 0;">
         <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.9;">
-            Anticipez la couverture médiatique
+            Anticipez l'impact médiatique d'un événement
         </div>
         <div style="font-size: 1.05rem; font-weight: 600; margin-top: 0.3rem; line-height: 1.4;">
-            Décrivez un événement et voyez comment les médias mondiaux sont
-            susceptibles d'en parler — avant même qu'il ne soit public.
+            Décrivez un événement et voyez quel impact il aura sur les médias
+            mondiaux — avant même qu'il ne soit public.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1697,12 +1697,12 @@ with cta_right:
     st.write("")
     try:
         st.page_link(
-            "pages/2_Anticiper_la_couverture.py",
-            label="Anticiper la couverture d'un événement →",
+            "pages/2_Anticiper_l_impact_mediatique.py",
+            label="Anticiper l'impact médiatique d'un événement →",
             use_container_width=True,
         )
     except Exception:
-        st.info("Ouvrez la page **Anticiper la couverture** dans le menu de gauche pour tester le modèle.")
+        st.info("Ouvrez la page **Anticiper l'impact médiatique** dans le menu de gauche pour tester le modèle.")
 
 with st.expander("Pourquoi Random Forest plutôt qu'un autre modèle ?"):
     st.markdown("""
