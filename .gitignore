@@ -47,8 +47,8 @@ models/*
 .DS_Store
 
 # BeninSentinel — base d'historique locale et journaux d'alertes
-# (le système reconstruit ces fichiers automatiquement à chaque déploiement)
-data/sentinel_history.db
+# sentinel_history.db est maintenant versionné (poussé par le workflow GitHub Actions)
+# pour que Streamlit Cloud puisse le lire. Les journaux d'alertes restent ignorés.
 data/alerts_journal/
 
 # Outils locaux non versionnables
