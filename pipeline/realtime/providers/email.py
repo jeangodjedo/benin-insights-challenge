@@ -47,6 +47,10 @@ class EmailProvider(NotificationProvider):
         self.smtp_user     = os.getenv("SENTINEL_SMTP_USER", "")
         self.smtp_password = os.getenv("SENTINEL_SMTP_PASSWORD", "")
         self.from_name     = os.getenv("SENTINEL_SMTP_FROM_NAME", "BeninSentinel")
+        # Adresse expéditrice — distincte du login SMTP (Brevo notamment exige
+        # un sender vérifié, qui n'est PAS l'identifiant technique SMTP).
+        # Fallback sur SMTP_USER si non défini (compatibilité Gmail standard).
+        self.from_email    = os.getenv("SENTINEL_SMTP_FROM_EMAIL", "") or self.smtp_user
         self.use_tls       = os.getenv("SENTINEL_SMTP_USE_TLS", "1") == "1"
 
         # Si pas de SMTP configuré : passer en mode simulé silencieux.
@@ -71,7 +75,7 @@ class EmailProvider(NotificationProvider):
 
         try:
             msg = EmailMessage()
-            msg["From"]    = formataddr((self.from_name, self.smtp_user))
+            msg["From"]    = formataddr((self.from_name, self.from_email))
             msg["To"]      = formataddr((recipient.get("name", ""), target))
             msg["Subject"] = payload.get("subject", "Alerte BeninSentinel")
             msg.set_content(payload.get("rendered_text", ""))

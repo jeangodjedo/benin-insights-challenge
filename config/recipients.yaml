@@ -13,63 +13,67 @@
 #     active  : true / false (permet de désactiver sans supprimer)
 #     notes   : optionnel, contexte d'usage
 #
-# Les destinataires ci-dessous sont des exemples PROTOTYPES.
-# À remplacer par les coordonnées officielles avant mise en production.
+# CONFIGURATION DÉMONSTRATION FINALE
+# ----------------------------------
+# Pendant la démo, tous les destinataires pointent vers devpancrace@gmail.com
+# pour que les bulletins déclenchés par l'orchestrateur soient effectivement
+# reçus et puissent être montrés au jury. À remplacer par les coordonnées
+# officielles avant mise en production.
 
 recipients:
   # ── Niveau stratégique — Présidence et Cabinet ────────────────
   - name:    Cabinet Présidence — Conseil restreint
     role:    presidence_cabinet
     channel: email
-    address: cabinet-presidence@example-benin.gov.bj
+    address: devpancrace@gmail.com
     active:  true
     notes:   À utiliser pour les alertes ROUGE uniquement.
 
   - name:    Cellule veille — Présidence
     role:    presidence_veille
     channel: email
-    address: veille-presidence@example-benin.gov.bj
+    address: devpancrace@gmail.com
     active:  true
 
   # ── Ministère de l'Intérieur ──────────────────────────────────
   - name:    Cabinet Ministre Intérieur
     role:    interieur_cabinet
     channel: email
-    address: cabinet-interieur@example-benin.gov.bj
+    address: devpancrace@gmail.com
     active:  true
 
   - name:    Direction Générale Sécurité Publique
     role:    interieur_securite
     channel: email
-    address: securite-publique@example-benin.gov.bj
+    address: devpancrace@gmail.com
     active:  true
 
   # ── Préfets des départements frontaliers nord ─────────────────
   - name:    Préfecture Alibori
     role:    prefecture_frontaliere
     channel: email
-    address: prefet-alibori@example-benin.gov.bj
+    address: devpancrace@gmail.com
     active:  true
     notes:   Zone à risque frontalier nord (Niger, Burkina Faso).
 
   - name:    Préfecture Atacora
     role:    prefecture_frontaliere
     channel: email
-    address: prefet-atacora@example-benin.gov.bj
+    address: devpancrace@gmail.com
     active:  true
     notes:   Zone à risque frontalier nord-ouest (Burkina Faso).
 
   - name:    Préfecture Borgou
     role:    prefecture_frontaliere
     channel: email
-    address: prefet-borgou@example-benin.gov.bj
+    address: devpancrace@gmail.com
     active:  true
 
   # ── Communication publique ────────────────────────────────────
   - name:    Agence Béninoise de Communication (ABC)
     role:    communication_publique
     channel: email
-    address: abc-veille@example-benin.gov.bj
+    address: devpancrace@gmail.com
     active:  true
     notes:   Cible le programme d'amplification narrative (action 03).
 
@@ -77,7 +81,7 @@ recipients:
   - name:    ANSSI-Bénin — porteur institutionnel BeninSentinel
     role:    anssi_porteur
     channel: email
-    address: contact@anssi-benin.example.bj
+    address: devpancrace@gmail.com
     active:  true
     notes:   Porteur opérationnel du déploiement BeninSentinel.
 
