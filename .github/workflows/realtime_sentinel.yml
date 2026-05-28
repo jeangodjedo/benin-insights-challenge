@@ -1,0 +1,154 @@
+# BeninSentinel — Surveillance temps réel automatisée
+#
+# Ce workflow GitHub Actions exécute le scheduler BeninSentinel toutes
+# les 15 minutes, en autonomie complète et sans serveur à maintenir.
+# Il :
+#   1. Récupère les données GDELT live depuis BigQuery
+#   2. Recalcule le score BeninSentinel
+#   3. Détecte les transitions de niveau d'alerte (VERT/JAUNE/ORANGE/ROUGE)
+#   4. Envoie les bulletins email aux destinataires configurés
+#   5. Persiste l'historique entre les runs via le cache GitHub Actions
+#
+# Logs publics auditables : onglet Actions du dépôt GitHub.
+# Conforme aux exigences de transparence du PAG 2021-2026.
+#
+# Secrets requis (à configurer dans Settings → Secrets and variables → Actions) :
+#   GCP_PROJECT_ID         : ID du projet Google Cloud (ex: alex-495410)
+#   GCP_SA_KEY_B64         : Service account JSON encodé en base64
+#   SENTINEL_SMTP_HOST     : smtp-relay.brevo.com
+#   SENTINEL_SMTP_PORT     : 587
+#   SENTINEL_SMTP_USER     : votre login Brevo (ex: acd483001@smtp-brevo.com)
+#   SENTINEL_SMTP_PASSWORD : clé SMTP Brevo (xsmtpsib-...)
+#   SENTINEL_SMTP_FROM_EMAIL : adresse expéditrice vérifiée dans Brevo
+
+name: BeninSentinel — Surveillance temps réel
+
+on:
+  # Toutes les 15 minutes (aligné sur le rythme de mise à jour de GDELT)
+  schedule:
+    - cron: '*/15 * * * *'
+  # Déclenchement manuel possible depuis l'interface GitHub (utile pour tests/démo)
+  workflow_dispatch:
+    inputs:
+      reset_history:
+        description: "Vider l'historique avant le tick (démarrage propre)"
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+# Empêcher deux runs simultanés (un tick à la fois pour éviter les races)
+concurrency:
+  group: benin-sentinel-realtime
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    name: Tick BeninSentinel (15 min)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10  # Largement suffisant — un tick prend ~30 s
+
+    permissions:
+      contents: read    # Suffit : on n'écrit rien dans le repo
+
+    steps:
+      # ─────────────────────────────────────────────────────────────
+      - name: Checkout du code (branche main)
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ─────────────────────────────────────────────────────────────
+      # Restauration de l'historique SQLite entre les runs.
+      # Sans cela, chaque tick repartirait de zéro et ne détecterait
+      # jamais les transitions d'alerte.
+      # ─────────────────────────────────────────────────────────────
+      - name: Restaurer l'historique SQLite depuis le cache
+        id: restore-db
+        uses: actions/cache/restore@v4
+        with:
+          path: data/sentinel_history.db
+          key: sentinel-history-db
+          restore-keys: |
+            sentinel-history-db
+
+      # ─────────────────────────────────────────────────────────────
+      # Authentification Google Cloud pour interroger BigQuery (GDELT).
+      # Le service account est stocké en base64 dans le secret GitHub
+      # pour éviter toute fuite dans les logs.
+      # ─────────────────────────────────────────────────────────────
+      - name: Configurer les credentials Google Cloud
+        env:
+          GCP_SA_KEY_B64: ${{ secrets.GCP_SA_KEY_B64 }}
+        run: |
+          if [ -z "$GCP_SA_KEY_B64" ]; then
+            echo "::warning::GCP_SA_KEY_B64 non défini — le système basculera en mode CSV local"
+            echo "SENTINEL_PREFER_LOCAL=1" >> $GITHUB_ENV
+          else
+            mkdir -p ~/.gcp
+            echo "$GCP_SA_KEY_B64" | base64 -d > ~/.gcp/sa-key.json
+            chmod 600 ~/.gcp/sa-key.json
+            echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/.gcp/sa-key.json" >> $GITHUB_ENV
+            echo "✅ Service account GCP configuré"
+          fi
+
+      # ─────────────────────────────────────────────────────────────
+      # Reset optionnel via dispatch manuel (utile pour démo finale)
+      # ─────────────────────────────────────────────────────────────
+      - name: Réinitialiser l'historique (si demandé)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.reset_history == 'true'
+        run: |
+          rm -f data/sentinel_history.db
+          echo "🔄 Historique réinitialisé sur demande"
+
+      # ─────────────────────────────────────────────────────────────
+      # Exécution du tick BeninSentinel
+      # ─────────────────────────────────────────────────────────────
+      - name: Tick BeninSentinel
+        env:
+          GCP_PROJECT_ID:             ${{ secrets.GCP_PROJECT_ID }}
+          SENTINEL_SMTP_HOST:         ${{ secrets.SENTINEL_SMTP_HOST }}
+          SENTINEL_SMTP_PORT:         ${{ secrets.SENTINEL_SMTP_PORT }}
+          SENTINEL_SMTP_USER:         ${{ secrets.SENTINEL_SMTP_USER }}
+          SENTINEL_SMTP_PASSWORD:     ${{ secrets.SENTINEL_SMTP_PASSWORD }}
+          SENTINEL_SMTP_FROM_EMAIL:   ${{ secrets.SENTINEL_SMTP_FROM_EMAIL }}
+          SENTINEL_SMTP_FROM_NAME:    'BeninSentinel'
+          SENTINEL_SMTP_USE_TLS:      '1'
+          SENTINEL_DAYS_BACK:         '45'
+        run: |
+          python -m scheduler.run_realtime --once
+
+      # ─────────────────────────────────────────────────────────────
+      # Sauvegarde de l'historique mis à jour dans le cache
+      # ─────────────────────────────────────────────────────────────
+      - name: Sauvegarder l'historique mis à jour
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data/sentinel_history.db
+          key: sentinel-history-db-${{ github.run_id }}
+
+      # ─────────────────────────────────────────────────────────────
+      # Conservation des artefacts pour audit (DB + journal des alertes)
+      # ─────────────────────────────────────────────────────────────
+      - name: Uploader l'historique en artefact (audit 30 jours)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-state-${{ github.run_id }}
+          path: |
+            data/sentinel_history.db
+            data/alerts_journal/
+          retention-days: 30
+          if-no-files-found: ignore
