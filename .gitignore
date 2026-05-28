@@ -46,6 +46,14 @@ models/*
 # System files
 .DS_Store
 
+# BeninSentinel — base d'historique locale et journaux d'alertes
+# (le système reconstruit ces fichiers automatiquement à chaque déploiement)
+data/sentinel_history.db
+data/alerts_journal/
+
+# Outils locaux non versionnables
+.blackboxcli/
+
 # Credentials
 credentials/
 *.json

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo_iroko_sentinel.png" alt="IROKO Analytics — BeninSentinel" width="220">
+</p>
+
 # Bénin Insights Challenge 2026 — IROKO Analytics
 
 Projet finaliste réalisé par **IROKO Analytics** (Équipe 7) dans le cadre du hackathon **iSHEERO × DataCamp Donates — Bénin Insights Challenge 2026**.
@@ -36,8 +40,26 @@ Projet finaliste réalisé par **IROKO Analytics** (Équipe 7) dans le cadre du 
 >
 > **Taux de détection : 100 %** sur les crises majeures vérifiées · **zéro faux positif ORANGE** sur l'année.
 >
-> Documentation : [`reports/BENIN_SENTINEL_FOUNDATIONS.md`](reports/BENIN_SENTINEL_FOUNDATIONS.md) · [`reports/BENIN_SENTINEL_VALIDATION.md`](reports/BENIN_SENTINEL_VALIDATION.md) · [`reports/PITCH_DECK_FINALE.md`](reports/PITCH_DECK_FINALE.md)
-> Code : [`pipeline/sentinel.py`](pipeline/sentinel.py) · Interface : [`dashboard/pages/3_BeninSentinel.py`](dashboard/pages/3_BeninSentinel.py) · Tests : [`tests/test_sentinel.py`](tests/test_sentinel.py)
+> Documentation : [`reports/BENIN_SENTINEL_FOUNDATIONS.md`](reports/BENIN_SENTINEL_FOUNDATIONS.md) · [`reports/BENIN_SENTINEL_VALIDATION.md`](reports/BENIN_SENTINEL_VALIDATION.md) · [`reports/PITCH_DECK_FINALE.md`](reports/PITCH_DECK_FINALE.md) · [`reports/REALTIME_ARCHITECTURE.md`](reports/REALTIME_ARCHITECTURE.md)
+> Code : [`pipeline/sentinel.py`](pipeline/sentinel.py) · Module temps réel : [`pipeline/realtime/`](pipeline/realtime/) · Interface : [`dashboard/pages/3_BeninSentinel.py`](dashboard/pages/3_BeninSentinel.py) · Tests : [`tests/test_sentinel.py`](tests/test_sentinel.py) + [`tests/test_realtime.py`](tests/test_realtime.py)
+
+### Du prototype démontré à l'alerte opérationnelle continue
+
+BeninSentinel est désormais accompagné d'un **système d'alerte temps réel
+production-ready** ([`pipeline/realtime/`](pipeline/realtime/)) qui permet de :
+
+- Surveiller en continu les données GDELT à fréquence configurable (par défaut 60 min)
+- Détecter automatiquement les transitions de niveau d'alerte (Vert → Jaune → Orange → Rouge)
+- Notifier les bons destinataires via les bons canaux (email SMTP, webhook HTTP, console)
+- Tracer toutes les actions dans une base SQLite auditable (états, transitions, notifications)
+- Tourner en mode `--once` (cron), `--loop` (boucle), Docker ou systemd
+
+Lancement local en mode démo :
+```bash
+SENTINEL_PREFER_LOCAL=1 SENTINEL_SIMULATE=1 python -m scheduler.run_realtime --once
+```
+
+Page de surveillance opérationnelle dans le dashboard : **« Surveillance temps réel »**.
 
 ---
 

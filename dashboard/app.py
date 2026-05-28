@@ -183,12 +183,18 @@ if isinstance(df_full, pd.DataFrame) and df_full.empty:
 # HEADER
 # ─────────────────────────────────────────────────────────────────
 
-st.markdown("""
-<div class="dashboard-header">
-    <h1>🇧🇯 Tableau de bord stratégique — Image internationale du Bénin</h1>
-    <p>Outil d'aide à la décision pour les pouvoirs publics · Couverture médiatique mondiale · Janvier – Décembre 2025</p>
-</div>
-""", unsafe_allow_html=True)
+_logo_path = ROOT / "assets" / "logo_iroko_sentinel.png"
+header_col_logo, header_col_text = st.columns([1, 5])
+with header_col_logo:
+    if _logo_path.exists():
+        st.image(str(_logo_path), use_column_width=True)
+with header_col_text:
+    st.markdown("""
+    <div class="dashboard-header">
+        <h1>Tableau de bord stratégique — Image internationale du Bénin</h1>
+        <p>Outil d'aide à la décision pour les pouvoirs publics · Couverture médiatique mondiale · Janvier – Décembre 2025</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 if data_source == "sample":
     st.markdown("""<div class="sample-banner">
