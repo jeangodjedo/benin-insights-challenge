@@ -1,5 +1,5 @@
 """
-Bénin Insights Challenge 2026 — Anticiper la couverture médiatique
+Bénin Insights Challenge 2026 — Anticiper l'impact médiatique d'un événement
 IROKO Analytics (Équipe 7)
 
 Page interactive accessible aux 3 publics cibles (décideurs, journalistes, chercheurs)
@@ -26,7 +26,7 @@ import joblib
 # ─────────────────────────────────────────────────────────────────
 
 st.set_page_config(
-    page_title="Anticiper la couverture · Bénin Insights",
+    page_title="Anticiper l'impact médiatique · Bénin Insights",
     page_icon="BJ",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -388,7 +388,7 @@ def render_prediction(pred_class, proba_by_class, summary_lines):
 
 st.markdown("""
 <div class="page-header">
-    <h1>Anticiper la couverture médiatique d'un événement</h1>
+    <h1>Anticiper l'impact médiatique d'un événement</h1>
     <p>Décrivez un événement au Bénin. Le modèle vous indique en temps réel comment
     les médias mondiaux sont susceptibles d'en parler. Trois modes selon votre profil.</p>
 </div>
@@ -613,7 +613,7 @@ moyen des articles publiés. Il prédit la **classe la plus probable** parmi
 st.markdown("---")
 st.markdown(
     "<center style='color:#9ca3af; font-size:0.8rem;'>"
-    "Anticipation de la couverture médiatique · Modèle Random Forest entraîné sur GDELT 2025 · "
+    "Anticipation de l'impact médiatique · Modèle Random Forest entraîné sur GDELT 2025 · "
     "IROKO Analytics — Bénin Insights Challenge 2026"
     "</center>",
     unsafe_allow_html=True

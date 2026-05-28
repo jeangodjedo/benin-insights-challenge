@@ -1,28 +1,8 @@
 # Bénin Insights Challenge 2026 — IROKO Analytics
 
-Projet réalisé par **IROKO Analytics** (Équipe 7) dans le cadre du hackathon **iSHEERO × DataCamp Donates — Bénin Insights Challenge 2026**.
+Projet finaliste réalisé par **IROKO Analytics** (Équipe 7) dans le cadre du hackathon **iSHEERO × DataCamp Donates — Bénin Insights Challenge 2026**.
 
----
-
-## BeninSentinel — produit phare présenté en finale
-
-> **BeninSentinel** est un système de veille et d'intelligence territoriale qui surveille en continu les médias mondiaux, détecte les signaux précurseurs de tensions au Bénin et génère des alertes graduées pour les décideurs publics — afin de passer de la **gestion des crises à leur prévention**.
->
-> **Cible** : Présidence du Bénin, Ministère de l'Intérieur, préfets, ANSSI-Bénin, ONG de paix.
-> **Aligné** : Programme d'Action du Gouvernement 2021-2026 — piliers Gouvernance, Numérique et Bien-être social.
->
-> **Validation empirique sur les données 2025** :
-> - **24 avril 2025** — Attaque jihadiste, 54 soldats béninois tués → alerte JAUNE déclenchée **4 jours avant** la crise (score ORANGE 0,686 le jour J).
-> - **7 décembre 2025** — Tentative de coup d'État déjouée → alerte JAUNE le jour même (score 0,560).
-> - **6 juin 2025** — Crise diplomatique → alerte JAUNE.
-> - **5 novembre 2025** — Pic de tensions sécuritaires → alerte ORANGE.
->
-> **Taux de détection : 100 % sur les 4 crises majeures vérifiées.** Aucun faux positif ORANGE sur l'année.
->
-> Code : [`pipeline/sentinel.py`](pipeline/sentinel.py)
-> Interface : [`dashboard/pages/3_BeninSentinel.py`](dashboard/pages/3_BeninSentinel.py)
-> Fondations méthodologiques : [`reports/BENIN_SENTINEL_FOUNDATIONS.md`](reports/BENIN_SENTINEL_FOUNDATIONS.md)
-> Rapport de validation : [`reports/BENIN_SENTINEL_VALIDATION.md`](reports/BENIN_SENTINEL_VALIDATION.md)
+> *« Un outil n'est pas excellent parce qu'il prédit. Il est excellent parce qu'il donne du temps. »*
 
 ---
 
@@ -30,24 +10,42 @@ Projet réalisé par **IROKO Analytics** (Équipe 7) dans le cadre du hackathon 
 
 > ### **[https://irokoanalytics.streamlit.app](https://irokoanalytics.streamlit.app)**
 >
-> Application accessible publiquement, sans installation. Trois sections principales :
+> Application publique accessible sans installation, conçue pour être **lisible et exploitable en quelques secondes par des décideurs publics non-techniques**. Trois pages complémentaires :
 >
-> - **Analyse exploratoire** (Q1 → Q6) — couverture médiatique, ton, propagation, sources, rôle du Bénin, agenda caché
-> - **Anticiper la couverture** — outil interactif de prédiction du ton médiatique (3 modes)
-> - **BeninSentinel** — système de veille temps réel pour les décideurs publics (cf. ci-dessus)
+> 1. **Tableau de bord stratégique** — aperçu exécutif + six questions clés en français naturel + synthèse stratégique avec cinq actions prioritaires
+> 2. **Anticiper l'impact médiatique d'un événement** — outil interactif à trois modes (scénarios prédéfinis · mode guidé · mode avancé) pour évaluer en temps réel l'impact médiatique anticipé d'un événement
+> 3. **BeninSentinel** — système d'alerte précoce des crises (cf. ci-dessous)
+
+---
+
+## BeninSentinel — produit phare de la finale
+
+> **BeninSentinel** est un système de veille et d'intelligence territoriale qui surveille en continu les médias mondiaux, détecte les signaux précurseurs de tensions au Bénin et génère des alertes graduées pour les décideurs publics — afin de passer de la **gestion réactive des crises à leur prévention proactive**.
+>
+> **Cible** : Présidence du Bénin, Ministère de l'Intérieur, préfets, ANSSI-Bénin, ONG de paix.
+> **Aligné** : Programme d'Action du Gouvernement 2021-2026 — piliers Gouvernance, Numérique et Bien-être social.
+>
+> **Validation empirique sur les 4 crises majeures du Bénin en 2025** :
+>
+> | Date | Événement | Score | Alerte | Détection |
+> |---|---|---:|:---:|:---:|
+> | 24 avril 2025 | Attaque jihadiste — 54 soldats béninois tués | 0,686 | **ORANGE** | **J-4** |
+> | 5 novembre 2025 | Pic de tensions sécuritaires | 0,640 | ORANGE | J-1 |
+> | 6 juin 2025 | Crise diplomatique + violence | 0,592 | JAUNE | J-0 |
+> | 7 décembre 2025 | Tentative de coup d'État déjouée | 0,560 | JAUNE | J-0 |
+>
+> **Taux de détection : 100 %** sur les crises majeures vérifiées · **zéro faux positif ORANGE** sur l'année.
+>
+> Documentation : [`reports/BENIN_SENTINEL_FOUNDATIONS.md`](reports/BENIN_SENTINEL_FOUNDATIONS.md) · [`reports/BENIN_SENTINEL_VALIDATION.md`](reports/BENIN_SENTINEL_VALIDATION.md) · [`reports/PITCH_DECK_FINALE.md`](reports/PITCH_DECK_FINALE.md)
+> Code : [`pipeline/sentinel.py`](pipeline/sentinel.py) · Interface : [`dashboard/pages/3_BeninSentinel.py`](dashboard/pages/3_BeninSentinel.py) · Tests : [`tests/test_sentinel.py`](tests/test_sentinel.py)
 
 ---
 
 ## Objectif du projet
 
-Extraire, nettoyer, organiser et analyser les données **GDELT** liées au Bénin sur l'année 2025
-afin de produire des insights utiles pour :
+Transformer les données mondiales **GDELT** en **intelligence territoriale exploitable** pour les pouvoirs publics béninois et leurs partenaires (journalistes, chercheurs, ONG de paix), avec un objectif clair : **donner du temps aux décideurs** face aux crises sécuritaires, sociales et politiques.
 
-- les journalistes ;
-- les chercheurs ;
-- les décideurs publics.
-
-Le projet vise à transformer des données mondiales en connaissances locales exploitables.
+Le projet adresse un problème précis et mesurable : aucun outil n'agrège, n'analyse et n'interprète aujourd'hui en continu les signaux faibles des médias mondiaux pour les décideurs béninois. Cette absence entretient un **déficit narratif de 20 points** (44 % d'articles négatifs en 2025 contre 24 % positifs) et entrave la mise en œuvre du PAG 2021-2026.
 
 ## Source de données
 
@@ -77,6 +75,36 @@ Les cinq questions prioritaires qui guident l'ensemble du pipeline :
 | Q4 | Les sources qui couvrent le Bénin en période de crise sont-elles différentes de celles en période normale ? | SOURCEURL, NumArticles, NumSources |
 | Q5 | Le Bénin est-il acteur ou spectateur de sa propre histoire internationale ? | Actor1CountryCode, Actor2CountryCode, IsRootEvent |
 
+Chaque question fait l'objet d'une analyse causale complète **Constat → Mécanisme → Conséquence chiffrée → Action décideur prescriptive**, accessible dans le dashboard et dans le notebook. Un sixième axe bonus (« angle médiatique caché ») complète l'analyse.
+
+## Cinq insights majeurs documentés
+
+1. **Déficit narratif structurel de 20 points** — 44 % d'articles négatifs contre 24 % positifs alors que la stabilité géopolitique réelle (score Goldstein moyen +0,68) est positive. Le Bénin est représenté 1,8 fois plus négativement que sa réalité.
+2. **Vulnérabilité narrative sous-estimée** — 4 des 5 plus grandes sources sur le Bénin sont nigérianes. Mais GDELT crawle majoritairement les médias anglophones et le Nigeria publie en anglais quand le Bénin publie en français : le déficit de souveraineté narrative est donc **encore pire que ne le montrent nos chiffres** — un biais médiatique amplifié par un biais linguistique.
+3. **Anticipation validée à J-4** — sur les quatre crises majeures du Bénin en 2025, BeninSentinel les détecte toutes ; l'attaque jihadiste du 24 avril (54 soldats tués) a été précédée d'une alerte JAUNE persistante quatre jours à l'avance.
+4. **Agenda médiatique caché** — plus de 3 000 événements graves (Goldstein ≤ −5) sont passés sous le radar médiatique mondial en 2025, dont 73 % sur le territoire béninois. Ce sont les signaux faibles qui préparent les prochaines crises.
+5. **Souveraineté narrative déficitaire** — le Bénin est passif (Contexte ou Spectateur) dans 68 % des événements mondiaux qui le concernent contre 31 % seulement où il est Acteur. À reconquérir par des initiatives diplomatiques signature.
+
+## Cible et impact stratégique
+
+Le projet est explicitement conçu pour les **décideurs publics béninois** : Présidence de la République, Cabinet du Ministre de l'Intérieur, préfets des départements frontaliers (Alibori, Atacora), ANSSI-Bénin, ABC (Agence Béninoise de Communication), ONG de paix et organisations partenaires.
+
+Il s'inscrit dans les trois piliers du **Programme d'Action du Gouvernement 2021-2026** :
+
+| Pilier PAG | Apport du projet |
+|---|---|
+| Gouvernance, État de droit | Outil d'aide à la décision transparent — seuils et signaux auditables |
+| Transformation numérique | Souveraineté analytique sur la donnée publique mondiale (GDELT) |
+| Bien-être social | Anticipation des crises = vies protégées, communication proactive |
+
+Cinq actions stratégiques prioritaires sont déclinées dans le dashboard (section finale) et dans le notebook :
+
+1. **Déploiement de BeninSentinel en production** (3-6 mois · ANSSI-Bénin)
+2. **Kit de communication d'urgence** (3 mois · ABC + Présidence) — diffusion H+1
+3. **Programme d'amplification narrative positive** (12 mois · Présidence + Affaires Étrangères) — cible ratio négatif/positif sous 1,3:1 en 18 mois
+4. **Partenariats éditoriaux régionaux** (6-12 mois · Diplomatie publique)
+5. **Initiatives diplomatiques signature** (24 mois) — ratio Acteur ≥ 45 % d'ici 2027
+
 ## Structure du dépôt
 
 ```text
@@ -87,23 +115,38 @@ benin-insights-challenge/
 │   ├── processed/    # Données nettoyées et enrichies (non versionnées)
 │   └── sample/       # Échantillons de test 5 000 lignes (non versionnés)
 │
-├── pipeline/      # Pipeline ETL GDELT (Data Engineer)
+├── pipeline/      # Pipeline ETL GDELT + module BeninSentinel
 │   ├── __init__.py
 │   ├── config.py        # Configuration centralisée
 │   ├── extract.py       # Extraction BigQuery
 │   ├── transform.py     # Nettoyage et enrichissement
 │   ├── load.py          # Sauvegarde CSV / Parquet / JSON
 │   ├── run_pipeline.py  # Orchestrateur principal
+│   ├── sentinel.py      # Module BeninSentinel — détection des crises
 │   └── utils.py         # Utilitaires transversaux
 │
-├── tests/
-│   ├── test_extract.py    # Tests sur build_query() — aucune connexion BigQuery requise
+├── tests/        # 96 tests unitaires (100 % passent)
+│   ├── test_extract.py    # Tests sur build_query()
 │   ├── test_transform.py  # Tests sur clean_basic(), convert_types(), enrich_data(), filter_data()
-│   └── test_load.py       # Tests sur save_to_csv(), save_to_parquet(), save_to_json(), generate_quality_report()
+│   ├── test_load.py       # Tests sur save_to_csv(), save_to_parquet(), save_to_json(), generate_quality_report()
+│   └── test_sentinel.py   # Tests sur build_daily_series(), compute_weak_signals(), compute_risk_score()
 │
-├── notebooks/     # Analyses exploratoires (Data Analyst / Data Scientist)
-├── models/        # Modèles de machine learning (ML Engineer)
-├── dashboard/     # Dashboard interactif Streamlit (Data Analyst)
+├── notebooks/
+│   └── eda_benin_gdelt_2025.ipynb   # Analyses exploratoires + ML + analyses causales
+│
+├── models/       # Artefacts ML versionnés (Random Forest + encoders + confusion matrix)
+│
+├── dashboard/
+│   ├── app.py                                    # Tableau de bord stratégique principal
+│   └── pages/
+│       ├── 2_Anticiper_l_impact_mediatique.py    # Outil interactif de prédiction
+│       └── 3_BeninSentinel.py                    # Système de veille pour décideurs
+│
+├── reports/      # Documentation stratégique
+│   ├── BENIN_SENTINEL_FOUNDATIONS.md   # Méthodologie rigoureuse de BeninSentinel
+│   ├── BENIN_SENTINEL_VALIDATION.md    # Rapport de validation empirique chiffré
+│   ├── PITCH_DECK_FINALE.md            # Pitch deck Finale (10 slides + Q&A préparée)
+│   └── Resume_Executif_IROKO_Analytics.pdf
 │
 ├── .env.example   # Template de configuration (à copier en .env)
 ├── .gitignore
