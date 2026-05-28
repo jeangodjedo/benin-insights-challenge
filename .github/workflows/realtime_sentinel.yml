@@ -29,6 +29,10 @@
 
 name: BeninSentinel — Surveillance temps réel
 
+permissions:
+  contents: write
+  id-token: write
+
 on:
   # Toutes les 15 minutes (aligné sur le rythme de mise à jour de GDELT)
   schedule:
