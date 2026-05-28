@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo_iroko_sentinel.png" alt="IROKO Analytics — BeninSentinel" width="220">
+</p>
+
 # Bénin Insights Challenge 2026 — IROKO Analytics
 
 Projet finaliste réalisé par **IROKO Analytics** (Équipe 7) dans le cadre du hackathon **iSHEERO × DataCamp Donates — Bénin Insights Challenge 2026**.

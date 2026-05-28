@@ -142,7 +142,13 @@ footer { visibility: hidden; }
 # HEADER
 # ─────────────────────────────────────────────────────────────────
 
-st.markdown("""
+_logo_path = ROOT / "assets" / "logo_iroko_sentinel.png"
+_h_col1, _h_col2 = st.columns([1, 6])
+with _h_col1:
+    if _logo_path.exists():
+        st.image(str(_logo_path), use_column_width=True)
+with _h_col2:
+    st.markdown("""
 <div class="sentinel-header">
     <div class="label">Système de veille et d'intelligence territoriale</div>
     <h1>BeninSentinel</h1>
