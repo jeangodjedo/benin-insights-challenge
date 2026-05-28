@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><title>Bulletin BeninSentinel — ROUGE</title></head>
+<body style="margin:0; padding:0; background:#f9fafb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#1f2937;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f9fafb; padding:20px 0;">
+<tr><td align="center">
+<table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff; border-radius:12px; overflow:hidden; border:2px solid #dc2626;">
+
+  <tr>
+    <td style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 28px 32px; color:#ffffff;">
+      <div style="font-size:13px; letter-spacing:0.15em; text-transform:uppercase; opacity:0.92;">
+        BeninSentinel — Bulletin de crise imminente
+      </div>
+      <h1 style="margin:6px 0 0; font-size:28px; font-weight:800;">
+        ALERTE ROUGE — Crise imminente
+      </h1>
+      <div style="font-size:14px; margin-top:6px; opacity:0.95;">
+        Date analysée : {{ target_date }} · Score composite : {{ score }} / 1,000
+      </div>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="padding: 24px 32px 6px;">
+      <p style="margin:0; font-size:15px; line-height:1.55;">
+        Madame, Monsieur <strong>{{ recipient_name }}</strong> ({{ recipient_role }}),
+      </p>
+      <p style="margin:10px 0 0; font-size:15px; line-height:1.55;">
+        BeninSentinel détecte une <strong style="color:#991b1b;">situation critique</strong>.
+        Le niveau d'alerte est passé de <strong>{{ from_level }}</strong> à
+        <strong style="color:#991b1b;">ROUGE</strong>. Une crise majeure est à anticiper
+        dans les heures qui viennent.
+      </p>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="padding: 16px 32px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+             style="background:#fef2f2; border-left:5px solid #dc2626; border-radius:8px;">
+        <tr><td style="padding: 20px 22px;">
+          <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:#991b1b; font-weight:700;">
+            Action recommandée — Conseil restreint Présidence
+          </div>
+          <div style="margin-top:8px; font-size:14px; color:#1f2937; line-height:1.55;">
+            Convocation du Conseil restreint Présidence. Bulletin toutes les heures.
+            Activation complète du dispositif de gestion de crise. Communication
+            publique préventive sur les canaux officiels. Alerte des ambassades
+            partenaires.
+          </div>
+        </td></tr>
+      </table>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="padding: 8px 32px 16px;">
+      <div style="font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:#6b7280; font-weight:700; margin-bottom:10px;">
+        Indicateurs surveillés (0 = normal · 1 = extrême)
+      </div>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="6" border="0" style="font-size:13px;">
+        {% for label, value in signals %}
+        <tr>
+          <td style="padding:5px 0; color:#374151;">{{ label }}</td>
+          <td align="right" style="padding:5px 0; font-weight:600; color:#0f172a;">{{ value }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="padding: 18px 32px 28px; border-top:1px solid #e5e7eb; font-size:12px; color:#6b7280; line-height:1.6;">
+      Bulletin de crise généré automatiquement par <strong>BeninSentinel</strong> ·
+      IROKO Analytics · Aligné PAG 2021-2026.
+      <br>
+      Pour le détail complet et le suivi en temps réel : consulter le tableau de bord
+      sécurisé BeninSentinel.
+    </td>
+  </tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>

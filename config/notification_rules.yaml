@@ -1,0 +1,52 @@
+# BeninSentinel — Règles de routage des alertes
+#
+# Définit, pour chaque niveau d'alerte, quels rôles destinataires sont
+# concernés. Les rôles référencés ici doivent exister dans recipients.yaml.
+#
+# Logique de gradation :
+#   - VERT   : aucune notification (mode normal)
+#   - JAUNE  : cellule veille + ANSSI + audit
+#   - ORANGE : on ajoute Ministère de l'Intérieur + préfectures frontalières + ABC
+#   - ROUGE  : on ajoute le Cabinet Présidence (Conseil restreint)
+#
+# Cette gradation est conforme au playbook ACTION_PLAYBOOK défini dans
+# pipeline/sentinel.py et au plan d'action de la finale du hackathon.
+
+rules:
+  JAUNE:
+    - presidence_veille
+    - anssi_porteur
+    - audit_journal
+
+  ORANGE:
+    - presidence_veille
+    - interieur_cabinet
+    - interieur_securite
+    - prefecture_frontaliere
+    - communication_publique
+    - anssi_porteur
+    - cnc_bus_messages
+    - audit_journal
+
+  ROUGE:
+    - presidence_cabinet
+    - presidence_veille
+    - interieur_cabinet
+    - interieur_securite
+    - prefecture_frontaliere
+    - communication_publique
+    - anssi_porteur
+    - cnc_bus_messages
+    - audit_journal
+
+# ─────────────────────────────────────────────────────────────────
+# Options avancées (réservé à l'opérateur)
+# ─────────────────────────────────────────────────────────────────
+options:
+  # Si true, le système notifie aussi les retours au calme (DE_ESCALATION).
+  # Recommandé : true (utile pour les bulletins "fin d'alerte").
+  notify_de_escalation: true
+
+  # Délai minimal en minutes entre deux notifications d'un même destinataire
+  # pour la même transition (anti-spam basique).
+  rate_limit_minutes: 30
