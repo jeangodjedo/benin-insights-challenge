@@ -4,11 +4,37 @@ Projet réalisé par **IROKO Analytics** (Équipe 7) dans le cadre du hackathon 
 
 ---
 
+## BeninSentinel — produit phare présenté en finale
+
+> **BeninSentinel** est un système de veille et d'intelligence territoriale qui surveille en continu les médias mondiaux, détecte les signaux précurseurs de tensions au Bénin et génère des alertes graduées pour les décideurs publics — afin de passer de la **gestion des crises à leur prévention**.
+>
+> **Cible** : Présidence du Bénin, Ministère de l'Intérieur, préfets, ANSSI-Bénin, ONG de paix.
+> **Aligné** : Programme d'Action du Gouvernement 2021-2026 — piliers Gouvernance, Numérique et Bien-être social.
+>
+> **Validation empirique sur les données 2025** :
+> - **24 avril 2025** — Attaque jihadiste, 54 soldats béninois tués → alerte JAUNE déclenchée **4 jours avant** la crise (score ORANGE 0,686 le jour J).
+> - **7 décembre 2025** — Tentative de coup d'État déjouée → alerte JAUNE le jour même (score 0,560).
+> - **6 juin 2025** — Crise diplomatique → alerte JAUNE.
+> - **5 novembre 2025** — Pic de tensions sécuritaires → alerte ORANGE.
+>
+> **Taux de détection : 100 % sur les 4 crises majeures vérifiées.** Aucun faux positif ORANGE sur l'année.
+>
+> Code : [`pipeline/sentinel.py`](pipeline/sentinel.py)
+> Interface : [`dashboard/pages/3_BeninSentinel.py`](dashboard/pages/3_BeninSentinel.py)
+> Fondations méthodologiques : [`reports/BENIN_SENTINEL_FOUNDATIONS.md`](reports/BENIN_SENTINEL_FOUNDATIONS.md)
+> Rapport de validation : [`reports/BENIN_SENTINEL_VALIDATION.md`](reports/BENIN_SENTINEL_VALIDATION.md)
+
+---
+
 ## Dashboard interactif en ligne
 
 > ### **[https://irokoanalytics.streamlit.app](https://irokoanalytics.streamlit.app)**
 >
-> Application accessible publiquement, sans installation. Comprend l'analyse exploratoire complète (Q1 → Q6), la carte géographique, et la page **« Anticiper la couverture »** — un outil interactif de prédiction du ton médiatique pour décideurs, journalistes et chercheurs.
+> Application accessible publiquement, sans installation. Trois sections principales :
+>
+> - **Analyse exploratoire** (Q1 → Q6) — couverture médiatique, ton, propagation, sources, rôle du Bénin, agenda caché
+> - **Anticiper la couverture** — outil interactif de prédiction du ton médiatique (3 modes)
+> - **BeninSentinel** — système de veille temps réel pour les décideurs publics (cf. ci-dessus)
 
 ---
 
