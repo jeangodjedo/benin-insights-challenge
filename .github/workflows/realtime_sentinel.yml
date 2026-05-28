@@ -143,6 +143,18 @@ jobs:
           python -m scheduler.run_realtime --once
 
       # ─────────────────────────────────────────────────────────────
+      # Pousser l'historique mis à jour vers le repo (pour Streamlit Cloud)
+      # ─────────────────────────────────────────────────────────────
+      - name: Pousser sentinel_history.db vers le repo
+        if: always()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "BeninSentinel Automation"
+          git add data/sentinel_history.db
+          git commit -m "chore(sentinel): mise à jour historique des alertes [skip ci]" || true
+          git push origin main
+
+      # ─────────────────────────────────────────────────────────────
       # Sauvegarde de l'historique mis à jour dans le cache
       # ─────────────────────────────────────────────────────────────
       - name: Sauvegarder l'historique mis à jour
