@@ -1240,217 +1240,11 @@ Hypothèse à tester : la <b>probabilité conditionnelle d'une crise majeure</b>
 # CORRELATION MATRIX Q1–Q5
 # ─────────────────────────────────────────────────────────────────
 
-st.markdown(
-    '<div class="section-title">Pour aller plus loin · Comment les six questions s\'influencent</div>',
-    unsafe_allow_html=True
-)
-st.caption(
-    "Section technique. Cliquez pour explorer les corrélations statistiques entre les indicateurs. "
-    "Pour les décideurs : se concentrer sur la section Synthèse stratégique plus bas."
-)
-
-# Build monthly aggregates for each question
-monthly_corr = (
-    df.groupby("event_month", as_index=False)
-    .agg(nb_articles=("NumArticles", "sum"))
-    .sort_values("event_month")
-)
-
-tone_monthly_corr = (
-    df.groupby("event_month", as_index=False)
-    .agg(avg_tone=("AvgTone", "mean"))
-    .sort_values("event_month")
-)
-
-source_diversity = (
-    df.groupby("event_month")["source_domain"]
-    .nunique()
-    .reset_index()
-    .rename(columns={"source_domain": "source_count"})
-)
-
-benin_role_monthly = (
-    df.groupby("event_month")["benin_role"]
-    .apply(lambda x: (x == "Acteur").mean() * 100)
-    .reset_index()
-    .rename(columns={"benin_role": "actor_pct"})
-)
-
-# Assemble correlation dataframe (one row per month)
-corr_df = monthly_corr[["event_month", "nb_articles"]].rename(
-    columns={"nb_articles": "Q1_volume"}
-)
-corr_df = corr_df.merge(
-    tone_monthly_corr[["event_month", "avg_tone"]].rename(columns={"avg_tone": "Q2_tone"}),
-    on="event_month", how="left"
-)
-
-if "propagation_delay_days" in df.columns:
-    delay_monthly_corr = (
-        df.groupby("event_month")["propagation_delay_days"]
-        .mean()   # mean instead of median: median=0 for all months (>50% same-day),
-                  # which gives zero variance and makes Pearson correlation undefined (NaN).
-                  # The mean varies because high-delay events pull it differently each month.
-        .reset_index()
-        .rename(columns={"propagation_delay_days": "Q3_delay"})
-    )
-    corr_df = corr_df.merge(delay_monthly_corr, on="event_month", how="left")
-else:
-    corr_df["Q3_delay"] = float("nan")
-
-corr_df = corr_df.merge(
-    source_diversity.rename(columns={"source_count": "Q4_sources"}),
-    on="event_month", how="left"
-)
-corr_df = corr_df.merge(
-    benin_role_monthly.rename(columns={"actor_pct": "Q5_role"}),
-    on="event_month", how="left"
-)
-
-CORR_COLS   = ["Q1_volume", "Q2_tone", "Q3_delay", "Q4_sources", "Q5_role"]
-CORR_LABELS = ["Q1\nVolume", "Q2\nTon", "Q3\nDélai", "Q4\nSources", "Q5\nRôle"]
-
-corr_matrix = corr_df[CORR_COLS].corr()
-
-col_heatmap, col_insights = st.columns([3, 2])
-
-with col_heatmap:
-    fig_corr = go.Figure(
-        data=go.Heatmap(
-            z=corr_matrix.values,
-            x=CORR_LABELS,
-            y=CORR_LABELS,
-            colorscale="RdBu",
-            zmid=0,
-            zmin=-1,
-            zmax=1,
-            text=corr_matrix.values.round(2),
-            texttemplate="%{text}",
-            textfont={"size": 13, "color": "black"},
-            colorbar=dict(title="Corrélation", thickness=14),
-            hoverongaps=False,
-            hovertemplate="<b>%{y} ↔ %{x}</b><br>r = %{z:.2f}<extra></extra>"
-        )
-    )
-    fig_corr.update_layout(
-        title="Corrélations entre les 5 dimensions d'analyse (agrégées par mois)",
-        title_font_size=13,
-        height=420,
-        margin=dict(t=50, b=10, l=10, r=10),
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-    )
-    st.plotly_chart(fig_corr, use_container_width=True, config=CHART_CONFIG)
-
-with col_insights:
-    st.markdown("#### 🔍 Interprétation automatique")
-
-    # Collect all off-diagonal pairs sorted by absolute correlation
-    corr_pairs = []
-    for i in range(len(CORR_COLS)):
-        for j in range(i + 1, len(CORR_COLS)):
-            r = corr_matrix.iloc[i, j]
-            if not (r != r):  # skip NaN
-                corr_pairs.append({
-                    "q1": CORR_COLS[i],
-                    "q2": CORR_COLS[j],
-                    "r": r
-                })
-    corr_pairs.sort(key=lambda x: abs(x["r"]), reverse=True)
-
-    LABEL_MAP = {
-        "Q1_volume":  "Volume médiatique",
-        "Q2_tone":    "Ton médiatique",
-        "Q3_delay":   "Délai de propagation",
-        "Q4_sources": "Diversité des sources",
-        "Q5_role":    "Rôle du Bénin (Acteur %)",
-    }
-
-    for pair in corr_pairs[:5]:
-        r   = pair["r"]
-        l1  = LABEL_MAP[pair["q1"]]
-        l2  = LABEL_MAP[pair["q2"]]
-        tag = pair["q1"].split("_")[0]
-        tag2 = pair["q2"].split("_")[0]
-
-        if r > 0.6:
-            color = "#00b894"
-            icon  = "📈"
-            desc  = f"**corrélation positive forte** ({r:+.2f}) — quand l'un augmente, l'autre aussi."
-        elif r < -0.6:
-            color = "#d63031"
-            icon  = "📉"
-            desc  = f"**corrélation négative forte** ({r:+.2f}) — quand l'un augmente, l'autre baisse."
-        elif r > 0.3:
-            color = "#74b9ff"
-            icon  = "↗️"
-            desc  = f"**corrélation positive modérée** ({r:+.2f})."
-        elif r < -0.3:
-            color = "#fd79a8"
-            icon  = "↘️"
-            desc  = f"**corrélation négative modérée** ({r:+.2f})."
-        else:
-            color = "#b2bec3"
-            icon  = "➡️"
-            desc  = f"**pas de lien significatif** ({r:+.2f})."
-
-        st.markdown(
-            f"<div style='border-left:4px solid {color}; padding:0.5rem 0.8rem; "
-            f"margin:0.4rem 0; background:#f9fafb; border-radius:4px; font-size:0.83rem;'>"
-            f"{icon} <b>{tag} ↔ {tag2}</b> — {l1} / {l2}<br>"
-            f"<span style='color:#374151;'>{desc}</span>"
-            f"</div>",
-            unsafe_allow_html=True
-        )
-
-# Build dynamic correlation insight from top pair
-if len(corr_pairs) >= 2:
-    top1 = corr_pairs[0]
-    top2 = corr_pairs[1]
-    l1_1 = LABEL_MAP[top1["q1"]]
-    l1_2 = LABEL_MAP[top1["q2"]]
-    l2_1 = LABEL_MAP[top2["q1"]]
-    l2_2 = LABEL_MAP[top2["q2"]]
-    r1 = top1["r"]
-    r2 = top2["r"]
-
-    dir1 = "augmentent ensemble" if r1 > 0 else "varient inversement"
-    dir2 = "augmentent ensemble" if r2 > 0 else "varient inversement"
-
-    dynamic_corr_note = (
-        f"Le lien le plus fort : <b>{l1_1}</b> ↔ <b>{l1_2}</b> (r = {r1:+.2f}) — "
-        f"ils {dir1}. "
-        f"Deuxième lien : <b>{l2_1}</b> ↔ <b>{l2_2}</b> (r = {r2:+.2f}) — "
-        f"ils {dir2}."
-    )
-else:
-    dynamic_corr_note = "Pas assez de données pour identifier des corrélations significatives."
-
-st.markdown(f"""<div class="insight-box">
-    <span class="insight-num">Insight Corrélation</span> — Cette matrice révèle les <b>liens systémiques</b>
-    entre les 5 dimensions d'analyse.<br>
-    {dynamic_corr_note}
-    <div class="audience-grid">
-        <div class="audience-card decideurs">
-            <div class="audience-tag decideurs">🏛️ Décideurs</div>
-            Ces corrélations guident le <b>timing des communications</b>.
-            Communiquer positivement pendant les périodes de faible
-            volume médiatique maximise l'impact sans être noyé par les crises.
-        </div>
-        <div class="audience-card journalistes">
-            <div class="audience-tag journalistes">📰 Journalistes</div>
-            <b>Data-journalisme</b> : Ces corrélations permettent de
-            <b>prédire</b> quand un sujet béninois va exploser médiatiquement.
-            L'effet boule de neige (Volume ↔ Sources) est un signal d'alerte.
-        </div>
-        <div class="audience-card chercheurs">
-            <div class="audience-tag chercheurs">🔬 Chercheurs</div>
-            <b>Modélisation</b> : Ces corrélations mensuelles valident
-            un modèle de <i>media cascade</i> pour le Bénin.
-            Tester avec des données journalières pour affiner la granularité.
-        </div>
-    </div>
-</div>""", unsafe_allow_html=True)
+# Note : la matrice de corrélation détaillée (Pearson, heatmap RdBu, interprétation
+# automatique) a été retirée de la vue publique du dashboard pour ne pas surcharger
+# les décideurs non-techniques. Elle reste disponible dans le notebook Jupyter du
+# dépôt (notebooks/eda_benin_gdelt_2025.ipynb, section "Analyse de corrélation")
+# pour les chercheurs et data scientists qui souhaitent l'auditer.
 
 # ─────────────────────────────────────────────────────────────────
 # NEW — GEOGRAPHIC MAP OF MEDIA COVERAGE
@@ -1544,65 +1338,58 @@ if "ActionGeo_Lat" in df.columns and "ActionGeo_Long" in df.columns:
                     f"**{name}** — {ev:,} év. {tone_icon} ({tone_val:+.1f})"
                 )
 
-        # Timeline: cumulative daily events showing how coverage spreads
-        st.markdown("##### ⏳ Propagation de la couverture médiatique dans le temps")
-
-        geo_df["event_date"] = pd.to_datetime(geo_df["SQLDATE"], errors="coerce")
-        daily_coverage = (
-            geo_df.dropna(subset=["event_date"])
-            .groupby("event_date", as_index=False)
-            .agg(
-                events=("GLOBALEVENTID", "count"),
-                countries=("ActionGeo_CountryCode", "nunique"),
-                sources=("source_domain", "nunique"),
-                articles=("NumArticles", "sum")
+        # Timeline détaillée — masquée par défaut (réservée aux profils data)
+        with st.expander("Voir l'évolution jour par jour (analyses détaillées)"):
+            st.caption(
+                "Volume d'événements par jour et nombre de pays touchés chaque jour — "
+                "utile pour identifier les jours pivots de l'année."
             )
-            .sort_values("event_date")
-        )
-        daily_coverage["cumul_events"] = daily_coverage["events"].cumsum()
-        daily_coverage["cumul_countries"] = daily_coverage["countries"].cummax()
+            geo_df["event_date"] = pd.to_datetime(geo_df["SQLDATE"], errors="coerce")
+            daily_coverage = (
+                geo_df.dropna(subset=["event_date"])
+                .groupby("event_date", as_index=False)
+                .agg(
+                    events=("GLOBALEVENTID", "count"),
+                    countries=("ActionGeo_CountryCode", "nunique"),
+                    sources=("source_domain", "nunique"),
+                    articles=("NumArticles", "sum")
+                )
+                .sort_values("event_date")
+            )
 
-        fig_timeline = make_subplots(
-            rows=2, cols=1, shared_xaxes=True,
-            row_heights=[0.6, 0.4],
-            subplot_titles=(
-                "Événements par jour (volume brut)",
-                "Nombre de pays couverts par jour"
-            ),
-            vertical_spacing=0.12
-        )
-
-        fig_timeline.add_trace(
-            go.Bar(
-                x=daily_coverage["event_date"],
-                y=daily_coverage["events"],
-                marker_color="#1a56db",
-                name="Événements/jour",
-                hovertemplate="<b>%{x|%d %b %Y}</b><br>%{y} événements<extra></extra>"
-            ), row=1, col=1
-        )
-
-        fig_timeline.add_trace(
-            go.Scatter(
-                x=daily_coverage["event_date"],
-                y=daily_coverage["countries"],
-                mode="lines+markers",
-                marker=dict(size=3, color="#7e3af2"),
-                line=dict(color="#7e3af2", width=1.5),
-                name="Pays touchés/jour",
-                hovertemplate="<b>%{x|%d %b %Y}</b><br>%{y} pays<extra></extra>"
-            ), row=2, col=1
-        )
-
-        fig_timeline.update_layout(
-            height=450,
-            plot_bgcolor="white", paper_bgcolor="white",
-            margin=dict(t=50, b=10),
-            showlegend=False
-        )
-        fig_timeline.update_xaxes(gridcolor="#f0f0f0")
-        fig_timeline.update_yaxes(gridcolor="#f0f0f0")
-        st.plotly_chart(fig_timeline, use_container_width=True, config=CHART_CONFIG)
+            fig_timeline = make_subplots(
+                rows=2, cols=1, shared_xaxes=True,
+                row_heights=[0.6, 0.4],
+                subplot_titles=(
+                    "Événements par jour (volume brut)",
+                    "Nombre de pays couverts par jour"
+                ),
+                vertical_spacing=0.12
+            )
+            fig_timeline.add_trace(
+                go.Bar(
+                    x=daily_coverage["event_date"], y=daily_coverage["events"],
+                    marker_color="#1a56db", name="Événements/jour",
+                    hovertemplate="<b>%{x|%d %b %Y}</b><br>%{y} événements<extra></extra>"
+                ), row=1, col=1
+            )
+            fig_timeline.add_trace(
+                go.Scatter(
+                    x=daily_coverage["event_date"], y=daily_coverage["countries"],
+                    mode="lines+markers",
+                    marker=dict(size=3, color="#7e3af2"),
+                    line=dict(color="#7e3af2", width=1.5),
+                    name="Pays touchés/jour",
+                    hovertemplate="<b>%{x|%d %b %Y}</b><br>%{y} pays<extra></extra>"
+                ), row=2, col=1
+            )
+            fig_timeline.update_layout(
+                height=450, plot_bgcolor="white", paper_bgcolor="white",
+                margin=dict(t=50, b=10), showlegend=False
+            )
+            fig_timeline.update_xaxes(gridcolor="#f0f0f0")
+            fig_timeline.update_yaxes(gridcolor="#f0f0f0")
+            st.plotly_chart(fig_timeline, use_container_width=True, config=CHART_CONFIG)
 
         st.markdown(f"""<div class="insight-box">
             <span class="insight-num">Insight Géo</span> — La couverture médiatique du Bénin
@@ -1747,40 +1534,36 @@ if "event_root_label" in df.columns:
     top_glossary = EVENT_GLOSSARY.get(top_name, "")
     top_explain = f" (<i>{top_glossary}</i>)" if top_glossary else ""
 
-    st.markdown(f"""<div class="insight-box">
-        <span class="insight-num">Insight Sujets</span> — Le sujet dominant est
-        <b>{top_name}</b>{top_explain} avec {top_count:,} événements.
-        Les sujets les moins couverts proportionnellement : {under_str}.
-        <br><br>
-        <b>📚 Glossaire des types d'événements GDELT</b> :<br>
-        <small>
-        • <b>Consultation</b> = discussions diplomatiques, négociations, réunions entre États<br>
-        • <b>Déclaration publique</b> = annonces officielles, discours, communiqués<br>
-        • <b>Engagement / Soutien</b> = aide, coopération, accords, partenariats<br>
-        • <b>Violence de masse</b> = conflits armés, violences collectives<br>
-        • <b>Assaut</b> = attaques physiques, opérations militaires<br>
-        • <b>Désapprobation</b> = critiques, condamnations officielles<br>
-        • <b>Protestation</b> = manifestations, grèves, mouvements sociaux
-        </small>
-        <div class="audience-grid">
-            <div class="audience-card decideurs">
-                <div class="audience-tag decideurs">🏛️ Décideurs</div>
-                La heatmap révèle la <b>saisonnalité thématique</b> : certains sujets
-                culminent à des mois précis. Utile pour planifier les réponses institutionnelles.
-            </div>
-            <div class="audience-card journalistes">
-                <div class="audience-tag journalistes">📰 Journalistes</div>
-                <b>Sujets émergents</b> : le graphique de droite montre les thèmes en
-                <b>forte hausse</b> ce mois — des angles d'actualité à investiguer.
-                Les sujets sous-couverts sont des <b>exclusivités potentielles</b>.
-            </div>
-            <div class="audience-card chercheurs">
-                <div class="audience-tag chercheurs">🔬 Chercheurs</div>
-                <b>Topic modeling</b> : la heatmap valide l'existence de cycles thématiques.
-                Appliquer LDA ou BERTopic sur les titres d'articles pour affiner la classification.
-            </div>
-        </div>
-    </div>""", unsafe_allow_html=True)
+    # Encadré synthétique pour décideurs
+    st.markdown(f"""
+    <div style="background:#eff6ff; border-left:4px solid #1a56db; border-radius:6px;
+                padding:0.8rem 1.1rem; font-size:0.92rem; color:#1e3a8a; margin-top:0.6rem; line-height:1.55;">
+        <b>En une phrase :</b> Le sujet dominant est <b>{top_name}</b>{top_explain} avec
+        {top_count:,} événements. Les sujets les moins couverts proportionnellement :
+        {under_str}.
+    </div>
+    """, unsafe_allow_html=True)
+
+    with st.expander("Glossaire des types d'événements et angles éditoriaux"):
+        st.markdown("""
+**Que signifient les principaux types d'événements ?**
+
+- **Consultation** — discussions diplomatiques, négociations, réunions entre États
+- **Déclaration publique** — annonces officielles, discours, communiqués
+- **Engagement / Soutien** — aide, coopération, accords, partenariats
+- **Violence de masse** — conflits armés, violences collectives
+- **Assaut** — attaques physiques, opérations militaires
+- **Désapprobation** — critiques, condamnations officielles
+- **Protestation** — manifestations, grèves, mouvements sociaux
+
+**Lectures pour chaque profil :**
+- **Décideurs publics** — la heatmap révèle la saisonnalité thématique : certains
+  sujets culminent à des mois précis. Utile pour planifier les réponses institutionnelles.
+- **Journalistes** — le graphique de droite montre les thèmes en forte hausse ce mois.
+  Les sujets sous-couverts sont des **exclusivités potentielles**.
+- **Chercheurs** — la heatmap valide l'existence de cycles thématiques. Appliquer LDA
+  ou BERTopic sur les titres d'articles pour affiner la classification.
+""")
 
 # ─────────────────────────────────────────────────────────────────
 # BONUS — GEOGRAPHIC BREAKDOWN (if available)
