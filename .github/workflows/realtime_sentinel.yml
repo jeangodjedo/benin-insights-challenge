@@ -12,14 +12,20 @@
 # Logs publics auditables : onglet Actions du dépôt GitHub.
 # Conforme aux exigences de transparence du PAG 2021-2026.
 #
-# Secrets requis (à configurer dans Settings → Secrets and variables → Actions) :
-#   GCP_PROJECT_ID         : ID du projet Google Cloud (ex: alex-495410)
-#   GCP_SA_KEY_B64         : Service account JSON encodé en base64
-#   SENTINEL_SMTP_HOST     : smtp-relay.brevo.com
-#   SENTINEL_SMTP_PORT     : 587
-#   SENTINEL_SMTP_USER     : votre login Brevo (ex: acd483001@smtp-brevo.com)
-#   SENTINEL_SMTP_PASSWORD : clé SMTP Brevo (xsmtpsib-...)
-#   SENTINEL_SMTP_FROM_EMAIL : adresse expéditrice vérifiée dans Brevo
+# Secrets requis (configurés dans Settings → Secrets and variables → Actions) :
+#   GCP_PROJECT_ID                  : ID du projet Google Cloud
+#   GCP_WORKLOAD_IDENTITY_PROVIDER  : Provider WIF (auth sans clé JSON)
+#   GCP_SERVICE_ACCOUNT             : Email du service account BigQuery
+#   SENTINEL_SMTP_HOST              : smtp-relay.brevo.com
+#   SENTINEL_SMTP_PORT              : 587
+#   SENTINEL_SMTP_USER              : login Brevo
+#   SENTINEL_SMTP_PASSWORD          : clé SMTP Brevo (xsmtpsib-...)
+#   SENTINEL_SMTP_FROM_EMAIL        : adresse expéditrice vérifiée dans Brevo
+#
+# Authentification GCP via Workload Identity Federation (OIDC) — aucune clé
+# JSON longue durée stockée ni dans GitHub ni sur disque. Conforme aux
+# meilleures pratiques 2024+ Google Cloud et aux exigences de sécurité du
+# PAG 2021-2026.
 
 name: BeninSentinel — Surveillance temps réel
 
@@ -52,6 +58,7 @@ jobs:
 
     permissions:
       contents: read    # Suffit : on n'écrit rien dans le repo
+      id-token: write   # Requis pour l'authentification OIDC vers Google Cloud (WIF)
 
     steps:
       # ─────────────────────────────────────────────────────────────
@@ -84,23 +91,26 @@ jobs:
             sentinel-history-db
 
       # ─────────────────────────────────────────────────────────────
-      # Authentification Google Cloud pour interroger BigQuery (GDELT).
-      # Le service account est stocké en base64 dans le secret GitHub
-      # pour éviter toute fuite dans les logs.
+      # Authentification Google Cloud via Workload Identity Federation.
+      # GitHub Actions présente un token OIDC, GCP le vérifie et émet un
+      # token temporaire d'accès BigQuery — aucune clé JSON longue durée
+      # n'est stockée nulle part. Bonnes pratiques 2024+.
       # ─────────────────────────────────────────────────────────────
-      - name: Configurer les credentials Google Cloud
-        env:
-          GCP_SA_KEY_B64: ${{ secrets.GCP_SA_KEY_B64 }}
+      - name: Authentification GCP via Workload Identity Federation
+        id: auth-gcp
+        if: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER != '' }}
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account:            ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configurer le mode d'extraction GDELT
         run: |
-          if [ -z "$GCP_SA_KEY_B64" ]; then
-            echo "::warning::GCP_SA_KEY_B64 non défini — le système basculera en mode CSV local"
+          if [ -z "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ]; then
+            echo "::warning::GCP_WORKLOAD_IDENTITY_PROVIDER non défini — bascule en mode CSV local"
             echo "SENTINEL_PREFER_LOCAL=1" >> $GITHUB_ENV
           else
-            mkdir -p ~/.gcp
-            echo "$GCP_SA_KEY_B64" | base64 -d > ~/.gcp/sa-key.json
-            chmod 600 ~/.gcp/sa-key.json
-            echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/.gcp/sa-key.json" >> $GITHUB_ENV
-            echo "✅ Service account GCP configuré"
+            echo "✅ Authentification GCP active — mode LIVE BigQuery"
           fi
 
       # ─────────────────────────────────────────────────────────────

@@ -21,35 +21,62 @@ sans serveur, auditable publiquement.
 
 ### Setup en 4 étapes
 
-#### 1. Créer un Service Account Google Cloud (5 min)
+#### 1. Workload Identity Federation (WIF) — auth GCP sans clé JSON
 
-L'authentification BigQuery via `gcloud auth application-default login` ne fonctionne pas dans GitHub Actions. Il faut un service account JSON.
+GitHub Actions s'authentifie à BigQuery via **OIDC** et **Workload Identity Federation** —
+pas de clé JSON longue durée stockée nulle part. À chaque run, GitHub présente un
+token éphémère, GCP le vérifie cryptographiquement et émet un token temporaire
+d'accès BigQuery. Conforme aux meilleures pratiques 2024+ Google Cloud.
 
-1. Aller sur https://console.cloud.google.com/iam-admin/serviceaccounts?project=alex-495410
-2. Cliquer sur **« + Créer un compte de service »**
-3. Nom : `benin-sentinel-bigquery` · Description : `Lecture GDELT pour BeninSentinel`
-4. Rôles à attribuer :
-   - `BigQuery Job User` (pour lancer des requêtes)
-   - `BigQuery Data Viewer` (pour lire les résultats)
-5. Cliquer sur le compte créé → onglet **« Clés »** → **« Ajouter une clé »** → **JSON** → télécharger le fichier
-6. Encoder le contenu en base64 :
-   ```bash
-   base64 -w 0 chemin/vers/le/fichier.json
-   ```
-   Copier la sortie (longue chaîne).
+Setup en une seule séquence de commandes (`gcloud` + `gh` requis) :
 
-#### 2. Configurer les secrets GitHub (3 min)
+```bash
+# Service account dédié (déjà créé : benin-sentinel-bigquery)
+SA_EMAIL="benin-sentinel-bigquery@alex-495410.iam.gserviceaccount.com"
+PROJECT="alex-495410"
+REPO="jeangodjedo/benin-insights-challenge"
 
-Aller dans **Settings → Secrets and variables → Actions → New repository secret** et créer ces 7 secrets :
+# Activer les API nécessaires
+gcloud services enable iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com bigquery.googleapis.com --project=$PROJECT
+
+# Créer le Workload Identity Pool
+gcloud iam workload-identity-pools create "github-actions-pool" \
+    --project=$PROJECT --location="global" \
+    --display-name="GitHub Actions Pool"
+
+# Créer le Provider OIDC pour GitHub (restreint au seul owner du repo)
+gcloud iam workload-identity-pools providers create-oidc "github-provider" \
+    --project=$PROJECT --location="global" \
+    --workload-identity-pool="github-actions-pool" \
+    --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner" \
+    --attribute-condition="assertion.repository_owner == 'jeangodjedo'" \
+    --issuer-uri="https://token.actions.githubusercontent.com"
+
+# Récupérer le nom complet du pool
+POOL_NAME=$(gcloud iam workload-identity-pools describe "github-actions-pool" \
+    --project=$PROJECT --location="global" --format="value(name)")
+
+# Lier le pool au service account, restreint au repo cible
+gcloud iam service-accounts add-iam-policy-binding "$SA_EMAIL" \
+    --project=$PROJECT \
+    --role="roles/iam.workloadIdentityUser" \
+    --member="principalSet://iam.googleapis.com/${POOL_NAME}/attribute.repository/${REPO}"
+```
+
+#### 2. Configurer les secrets GitHub (2 min)
+
+Aller dans **Settings → Secrets and variables → Actions → New repository secret** ou
+utiliser la CLI `gh secret set`. Créer ces 8 secrets :
 
 | Nom du secret | Valeur |
 |---|---|
 | `GCP_PROJECT_ID` | `alex-495410` |
-| `GCP_SA_KEY_B64` | la sortie base64 de l'étape précédente |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | sortie de `gcloud iam workload-identity-pools providers describe github-provider --workload-identity-pool=github-actions-pool --project=alex-495410 --location=global --format="value(name)"` |
+| `GCP_SERVICE_ACCOUNT` | `benin-sentinel-bigquery@alex-495410.iam.gserviceaccount.com` |
 | `SENTINEL_SMTP_HOST` | `smtp-relay.brevo.com` |
 | `SENTINEL_SMTP_PORT` | `587` |
 | `SENTINEL_SMTP_USER` | `acd483001@smtp-brevo.com` |
-| `SENTINEL_SMTP_PASSWORD` | la clé Brevo (`xsmtpsib-...`) |
+| `SENTINEL_SMTP_PASSWORD` | clé Brevo (`xsmtpsib-...`) |
 | `SENTINEL_SMTP_FROM_EMAIL` | `devpancrace@gmail.com` |
 
 #### 3. Activer le workflow (1 clic)
