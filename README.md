@@ -406,3 +406,5 @@ non linéaires.
 L'IA est utilisée comme outil d'assistance pour structurer le dépôt, concevoir le pipeline,
 améliorer la documentation et guider les choix techniques.
 Les décisions finales, validations, analyses et interprétations restent réalisées par l'équipe.
+
+https://docs.google.com/presentation/d/1BbTfLJERdPC4VRxGJlcCUR0rM41vXmTN/edit?usp=drive_link&ouid=103840680238423030510&rtpof=true&sd=true
