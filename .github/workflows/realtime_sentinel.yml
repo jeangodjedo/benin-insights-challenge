@@ -61,7 +61,7 @@ jobs:
     timeout-minutes: 10  # Largement suffisant — un tick prend ~30 s
 
     permissions:
-      contents: read    # Suffit : on n'écrit rien dans le repo
+      contents: write   # Requis pour push sentinel_history.db vers main
       id-token: write   # Requis pour l'authentification OIDC vers Google Cloud (WIF)
 
     steps:
